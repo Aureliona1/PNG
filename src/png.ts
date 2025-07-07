@@ -1,5 +1,5 @@
 import { ArrOp, clamp, ensureDir, type Vec2 } from "@aurellis/helpers";
-import { decode, encode } from "https://deno.land/x/pngs@0.1.1/mod.ts";
+import { decode, encode } from "./vendor/png.ts";
 import { DrawPNG } from "./draw.ts";
 import { FilterPNG } from "./filters.ts";
 import { SIC } from "./sic.ts";
