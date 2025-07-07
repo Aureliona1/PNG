@@ -2,7 +2,7 @@
   "imports": {
     "@aurellis/helpers": "jsr:@aurellis/helpers@^1.1.0"
   },
-  "name": "@aurellis/PNG",
+  "name": "@aurellis/png",
   "version": "1.0.0",
   "license": "MIT",
   "exports": "./mod.ts"
