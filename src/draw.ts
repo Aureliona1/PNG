@@ -2,6 +2,9 @@ import type { PNG } from "./png.ts";
 import { ArrOp, distance, hsv2rgb, mapRange, midPoint, progressRepeat, rotateVector, rotateVector2D, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
 import { makeNoise3D } from "./vendor/noise.ts";
 
+/**
+ * This is a utility class that can add shapes, lines, and patterns to an image. It should never be constructed by itself. Always use the `draw` member on a PNG.
+ */
 export class DrawPNG {
 	constructor(public src: PNG) {}
 	/**

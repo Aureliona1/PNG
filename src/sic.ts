@@ -33,6 +33,9 @@ export type SicDictEntry = {
 	byteStart: number;
 };
 
+/**
+ * An interface to SIC cache files. Never construct this class by itself. Use the `cache.batch` member on PNG.
+ */
 export class SIC {
 	private static isASCII(str: string) {
 		for (let i = 0; i < str.length; i++) {
