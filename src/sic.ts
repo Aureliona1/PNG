@@ -21,6 +21,9 @@ datachunk: Uint8Array
 import { concatUint8 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 
+/**
+ * The format of a dictionary entry to a SIC.
+ */
 export type SicDictEntry = {
 	nameLength: number;
 	name: string;

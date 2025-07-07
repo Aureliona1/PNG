@@ -1,6 +1,11 @@
 import type { Vec2 } from "@aurellis/helpers";
 import { PNG } from "./png.ts";
 
+/**
+ * Encode an image into a SICI binary.
+ * @param image The image to encode.
+ * @returns The encoded bytes.
+ */
 export function encodeSICI(image: PNG) {
 	let hasAlpha = !image.alphaHandler.hasNoAlphaValues;
 	if (hasAlpha && !image.alphaHandler.hasVariableAlpha) {
@@ -17,6 +22,10 @@ export function encodeSICI(image: PNG) {
 	return output;
 }
 
+/**
+ * Decode a SICI binary into a PNG.
+ * @param input The SICI binary.
+ */
 export function decodeSICI(input: Uint8Array) {
 	const view = new DataView(input.buffer);
 	const dimensions: Vec2 = [view.getFloat64(0), view.getFloat64(8)];

@@ -113,6 +113,16 @@ export class DrawPNG {
 		}
 		return this.src;
 	}
+	/**
+	 * Generate a fractal binary tree shape.
+	 * @param dims The dimensions of the resulting image.
+	 * @param layers The number of tree layers.
+	 * @param angleOffset The offset angle of each layer.
+	 * @param lengthFactor The factor by which each layer's length should change.
+	 * @param initialLength The length (in pixels) of the first layer.
+	 * @param baseColor The base color of the tree.
+	 * @param outerColor The color of the final layer of the tree.
+	 */
 	fractalTree(dims = this.src.dimensions, layers = 10, angleOffset = 20, lengthFactor = 0.9, initialLength = this.src.dimensions[0] * 0.13, baseColor: Vec4 = [255, 0, 0, 255], outerColor: Vec4 = [255, 255, 255, 255]): PNG {
 		this.generateBlank(dims, [0, 0, 0, 255]);
 		let ends: Vec3[] = [[this.src.dimensions[0] - 1, Math.floor(this.src.dimensions[1] / 2), 0]];

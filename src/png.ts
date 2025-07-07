@@ -173,26 +173,48 @@ class PNGCacheIndividual {
 }
 
 export class PNG {
+	/**
+	 * The raw pixels of the image.
+	 */
 	raw: Uint8Array<ArrayBuffer> = new Uint8Array();
+	/**
+	 * The [rows, cols] of the image.
+	 */
 	dimensions: Vec2 = [100, 100];
+	/**
+	 * Utility class for manipulating alpha values.
+	 */
 	get alphaHandler(): PNGAlphaHandler {
 		return new PNGAlphaHandler(this);
 	}
+	/**
+	 * Utility class for adding filters to the image.
+	 */
 	get filter(): FilterPNG {
 		return new FilterPNG(this);
 	}
+	/**
+	 * Utility classes for caching the image in different ways.
+	 */
 	get cache(): { batch: PNGCacheBatch; individual: PNGCacheIndividual } {
 		return {
 			batch: new PNGCacheBatch(this),
 			individual: new PNGCacheIndividual(this)
 		};
 	}
+	/**
+	 * Utility class for drawing shapes, lines, and patterns on the image.
+	 */
 	get draw(): DrawPNG {
 		return new DrawPNG(this);
 	}
 	constructor() {
 		this.draw.generateBlank();
 	}
+	/**
+	 * Read and import an image file.
+	 * @param name The relative filepath of the image. ".png" is optional.
+	 */
 	read(name: string): PNG {
 		name = /.*\.png$/.test(name) ? name : name + ".png";
 		const temp = decode(Deno.readFileSync(name));
@@ -204,8 +226,10 @@ export class PNG {
 		return this;
 	}
 	/**
-	 * Colors are 0-255 int, inc. alpha
-	 * Uses subarray, meaning you can edit the original array with this.
+	 * Get the value of a pixel on the image, this assumes that the image has alpha.
+	 * @param x The row (from the top) of the pixel.
+	 * @param y The col (from the left) of the pixel.
+	 * @returns An array view of the pixel, meaning you can modify the overal values from raw.
 	 */
 	getPixel(x: number, y: number): Uint8Array<ArrayBuffer> {
 		x = Math.floor(clamp(x, [0, this.dimensions[0] - 1]));
@@ -213,7 +237,10 @@ export class PNG {
 		return this.raw.subarray((x * this.dimensions[1] + y) * 4, (x * this.dimensions[1] + y + 1) * 4);
 	}
 	/**
-	 * Colors are 0-255 int, including alpha
+	 * Set the value of a pixel on the image, this assumes that the image has alpha.
+	 * @param x The row (from the top) of the pixel.
+	 * @param y The col (from the left) of the pixel.
+	 * @param color The [red, green, blue, alpha?] to se the pixel to (0 - 255).
 	 */
 	setPixel(x: number, y: number, color: ArrayLike<number>): PNG {
 		if (!(x < 0 || x >= this.dimensions[0] || y < 0 || y >= this.dimensions[1])) {
@@ -269,6 +296,10 @@ export class PNG {
 		}
 		return this;
 	}
+	/**
+	 * Write the image to a file.
+	 * @param name The filepath to write to. ".png" is optional.
+	 */
 	write(name: string = "im"): PNG {
 		name = /.*\.png$/.test(name) ? name : name + ".png";
 		if (this.alphaHandler.hasNoAlphaValues) {
