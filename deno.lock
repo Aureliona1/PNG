@@ -1,0 +1,16 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@aurellis/helpers@^1.1.0": "1.1.0"
+  },
+  "jsr": {
+    "@aurellis/helpers@1.1.0": {
+      "integrity": "8c98ac18d3d62b89de8eeed103cddad1ddc91400a436f5f7d873322bca6cf930"
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@aurellis/helpers@^1.1.0"
+    ]
+  }
+}
