@@ -1,9 +1,12 @@
-import init, { decode as wasmDecode, encode as wasmEncode, source } from "./png_wasm.js";
+import init, { source, decode as wasmDecode, encode as wasmEncode } from "./png_wasm.js";
 
 await init(source);
 
 type ValueOf<T> = T[keyof T];
 
+/**
+ * Color space name map.
+ */
 export const ColorType = {
 	Grayscale: 0,
 	RGB: 2,
@@ -12,6 +15,9 @@ export const ColorType = {
 	RGBA: 6
 };
 
+/**
+ * Bit depth name map.
+ */
 export const BitDepth = {
 	One: 1,
 	Two: 2,
@@ -20,6 +26,9 @@ export const BitDepth = {
 	Sixteen: 16
 };
 
+/**
+ * Compression format name map.
+ */
 export const Compression = {
 	Default: 0,
 	Fast: 1,
@@ -28,6 +37,9 @@ export const Compression = {
 	Rle: 4
 };
 
+/**
+ * PNG filter name map.
+ */
 export const FilterType = {
 	NoFilter: 0,
 	Sub: 1,
@@ -36,6 +48,9 @@ export const FilterType = {
 	Paeth: 4
 };
 
+/**
+ * The result of decoding a PNG file.
+ */
 export interface DecodeResult {
 	image: Uint8Array;
 	width: number;
@@ -45,6 +60,14 @@ export interface DecodeResult {
 	lineSize: number;
 }
 
+/**
+ * Encode binary into a PNG file.
+ * @param image The pixel values in the specified format.
+ * @param width The width of the image.
+ * @param height The height of the image.
+ * @param options Encode options.
+ * @returns A PNG binary.
+ */
 export function encode(
 	image: Uint8Array,
 	width: number,
@@ -66,6 +89,10 @@ export function encode(
 	return wasmEncode(image, width, height, options?.palette, options?.trns, options?.color ?? ColorType.RGBA, options?.depth ?? BitDepth.Eight, options?.compression, options?.filter);
 }
 
+/**
+ * Decode a PNG binary.
+ * @param image The binary to decode.
+ */
 export function decode(image: Uint8Array): DecodeResult {
 	const res = wasmDecode(image);
 

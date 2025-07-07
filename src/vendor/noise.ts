@@ -10,6 +10,7 @@ const NORM_3D = 1.0 / 103.0;
 const SQUISH_3D = (Math.sqrt(3 + 1) - 1) / 3;
 const STRETCH_3D = (1 / Math.sqrt(3 + 1) - 1) / 3;
 
+/** A function that can sample from a 3D noise map. */
 export type Noise3D = (x: number, y: number, z: number) => number;
 
 interface Contribution3D {
@@ -33,6 +34,10 @@ function contribution3D(multiplier: number, xsb: number, ysb: number, zsb: numbe
 	};
 }
 
+/**
+ * Construct a new noise map.
+ * @param clientSeed The seed to pass to the generator.
+ */
 export function makeNoise3D(clientSeed: number): Noise3D {
 	const contributions: Contribution3D[] = [];
 	for (let i = 0; i < p3D.length; i += 9) {
