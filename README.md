@@ -10,7 +10,7 @@ PNG is made to work with [Deno](deno.com), and has not been tested on other runt
 To import PNG into your project, use the JSR import:
 
 ```ts
-import { PNG } from "jsr:@aurellis/PNG";
+import { PNG } from "jsr:@aurellis/png";
 
 const im = new PNG();
 ```
