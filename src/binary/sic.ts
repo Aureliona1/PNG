@@ -19,7 +19,7 @@ datachunk: Uint8Array
 */
 
 import { concatUint8 } from "@aurellis/helpers";
-import type { PNG } from "./png.ts";
+import type { PNG } from "../png.ts";
 
 /**
  * The format of a dictionary entry to a SIC.
@@ -91,7 +91,7 @@ export class SIC {
 			if (this.dataChunk.length < x.byteStart + expectedImageDataLength) {
 				console.log("Input datachunk is too small, adding zeros to account for missing values...");
 				const missingValueCount = x.byteStart + expectedImageDataLength - this.dataChunk.length;
-				this.dataChunk = concatUint8(this.dataChunk, new Uint8Array(missingValueCount));
+				this.dataChunk = concatUint8([this.dataChunk, new Uint8Array(missingValueCount)]);
 			}
 
 			return {
@@ -155,12 +155,12 @@ export class SIC {
 		this.dict.push({
 			nameLength: new TextEncoder().encode(name).length,
 			name: name,
-			width: im.dimensions[1],
-			height: im.dimensions[0],
+			width: im.width,
+			height: im.height,
 			alpha: alpha,
 			byteStart: this.dataChunk.length
 		});
-		this.dataChunk = concatUint8(this.dataChunk, im.raw);
+		this.dataChunk = concatUint8([this.dataChunk, im.raw]);
 		this.dictLength += 17 + name.length;
 	}
 

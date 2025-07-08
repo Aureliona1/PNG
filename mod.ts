@@ -1,1 +1,1 @@
-export * from "./src/png.ts";
+export { PNG } from "./src/png.ts";

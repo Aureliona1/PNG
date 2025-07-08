@@ -5,21 +5,23 @@ import { makeNoise3D } from "./vendor/noise.ts";
 /**
  * This is a utility class that can add shapes, lines, and patterns to an image. It should never be constructed by itself. Always use the `draw` member on a PNG.
  */
-export class DrawPNG {
+export class PNGDrawUtility {
 	constructor(public src: PNG) {}
 	/**
 	 * Fill the image with a specific color.
-	 * @param dims The dimensions of the image [height width]
+	 * @param dims The dimensions of the image [width, height]
 	 * @param color The color (gamma rgb)
 	 */
-	generateBlank(dims = this.src.dimensions, color = [255, 255, 255, 255]): PNG {
+	generateBlank(dims = [this.src.width, this.src.height], color = [255, 255, 255, 255]): PNG {
 		this.src.raw = new Uint8Array(dims[0] * dims[1] * 4).map((_v, i) => color[i % 4]);
-		this.src.dimensions = dims;
+		// this.src.dimensions = dims;
+		this.src.width = dims[0];
+		this.src.height = dims[1];
 		return this.src;
 	}
 	/**
 	 * Draws a vector on the PNG.
-	 * @param start The start coord [row from top, col from left].
+	 * @param start The start coord [col from left, row from top].
 	 * @param end The end coord.
 	 * @param color The color.
 	 */
@@ -62,24 +64,24 @@ export class DrawPNG {
 	 * @param seed The seed for the noise generator.
 	 * @param byColor Set this to true to run the noise over the image by each color instead of all color channels consecutively. (Default - false)
 	 */
-	noisify(dims = this.src.dimensions, z = 0, scale = 1, seed: number = Math.random(), byColor = false): PNG {
+	noisify(dims = [this.src.width, this.src.height], z = 0, scale = 1, seed: number = Math.random(), byColor = false): PNG {
 		this.generateBlank(dims);
 		if (byColor) {
 			let noise = makeNoise3D(seed * 3276.123);
 			for (let i = 0; i < this.src.raw.length; i += 4) {
-				this.src.raw[i] = mapRange(noise((i % (this.src.dimensions[1] * 4)) * scale, Math.floor(i / (this.src.dimensions[1] * 4)) * scale, z), [-1, 1], [0, 255], 0);
+				this.src.raw[i] = mapRange(noise((i % (this.src.width * 4)) * scale, Math.floor(i / (this.src.width * 4)) * scale, z), [-1, 1], [0, 255], 0);
 			}
 			noise = makeNoise3D(seed + 1 * 3276.123);
 			for (let i = 1; i < this.src.raw.length; i += 4) {
-				this.src.raw[i] = mapRange(noise((i % (this.src.dimensions[1] * 4)) * scale, Math.floor(i / (this.src.dimensions[1] * 4)) * scale, z), [-1, 1], [0, 255], 0);
+				this.src.raw[i] = mapRange(noise((i % (this.src.width * 4)) * scale, Math.floor(i / (this.src.width * 4)) * scale, z), [-1, 1], [0, 255], 0);
 			}
 			noise = makeNoise3D(seed + 2 * 3276.123);
 			for (let i = 2; i < this.src.raw.length; i += 4) {
-				this.src.raw[i] = mapRange(noise((i % (this.src.dimensions[1] * 4)) * scale, Math.floor(i / (this.src.dimensions[1] * 4)) * scale, z), [-1, 1], [0, 255], 0);
+				this.src.raw[i] = mapRange(noise((i % (this.src.width * 4)) * scale, Math.floor(i / (this.src.width * 4)) * scale, z), [-1, 1], [0, 255], 0);
 			}
 		} else {
 			const noise = makeNoise3D(seed);
-			this.src.function(false, i => mapRange(noise((i % (this.src.dimensions[1] * 4)) * scale, Math.floor(i / (this.src.dimensions[1] * 4)) * scale, z), [-1, 1], [0, 255], 0));
+			this.src.function(false, i => mapRange(noise((i % (this.src.width * 4)) * scale, Math.floor(i / (this.src.width * 4)) * scale, z), [-1, 1], [0, 255], 0));
 		}
 		return this.src;
 	}
@@ -91,7 +93,7 @@ export class DrawPNG {
 	 * @param color The color of the shape.
 	 * @param fadeWhite Optional, fade more common pixels to white.
 	 */
-	fractalPolygon(dims = this.src.dimensions, corners = 3, color: Vec4 = [255, 0, 0, 255], fadeWhite = false): PNG {
+	fractalPolygon(dims = [this.src.width, this.src.height], corners = 3, color: Vec4 = [255, 0, 0, 255], fadeWhite = false): PNG {
 		// Create black bg
 		this.generateBlank(dims, [0, 0, 0, 255]);
 
@@ -126,9 +128,9 @@ export class DrawPNG {
 	 * @param baseColor The base color of the tree.
 	 * @param outerColor The color of the final layer of the tree.
 	 */
-	fractalTree(dims = this.src.dimensions, layers = 10, angleOffset = 20, lengthFactor = 0.9, initialLength = this.src.dimensions[0] * 0.13, baseColor: Vec4 = [255, 0, 0, 255], outerColor: Vec4 = [255, 255, 255, 255]): PNG {
+	fractalTree(dims = [this.src.width, this.src.height], layers = 10, angleOffset = 20, lengthFactor = 0.9, initialLength = this.src.height * 0.13, baseColor: Vec4 = [255, 0, 0, 255], outerColor: Vec4 = [255, 255, 255, 255]): PNG {
 		this.generateBlank(dims, [0, 0, 0, 255]);
-		let ends: Vec3[] = [[this.src.dimensions[0] - 1, Math.floor(this.src.dimensions[1] / 2), 0]];
+		let ends: Vec3[] = [[this.src.height - 1, Math.floor(this.src.width / 2), 0]];
 		for (let i = 0; i < layers; i++) {
 			const newEnds: Vec3[] = [];
 			const color = ArrOp.lerp(baseColor, outerColor, i / layers);
@@ -146,7 +148,7 @@ export class DrawPNG {
 	 * @param dims The dimensions of the diagram.
 	 * @param pointCount The number of points in the diagram.
 	 */
-	voronoiDiagram(dims = this.src.dimensions, pointCount = 10): PNG {
+	voronoiDiagram(dims = [this.src.width, this.src.height], pointCount = 10): PNG {
 		const maxDist = distance(dims, [0, 0]);
 		this.generateBlank(dims);
 		const points = Array(pointCount)
