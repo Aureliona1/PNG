@@ -36,7 +36,20 @@ export type DecodeResult = {
 	width: number;
 	height: number;
 	bitDepth: BitDepth;
-} & ({ colorFormat: "GrayScale" | "RGB"; trns?: Uint8Array } | { colorFormat: "Indexed"; trns?: Uint8Array; palette: Uint8Array } | { colorFormat: "GrayScaleAlpha" | "RGBA" });
+} & (
+	| {
+			colorFormat: "GrayScale" | "RGB";
+			trns?: Uint8Array;
+	  }
+	| {
+			colorFormat: "Indexed";
+			trns?: Uint8Array;
+			palette: Uint8Array;
+	  }
+	| {
+			colorFormat: "GrayScaleAlpha" | "RGBA";
+	  }
+);
 
 export type EncodeOpts = {
 	raw: Uint8Array;
