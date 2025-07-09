@@ -1,8 +1,7 @@
 import { concatUint8 } from "@aurellis/helpers";
 import { deflate } from "@deno-library/compress";
 import { crc32 } from "@deno-library/crc32";
-import { type ColorFormat, colorFormatChannels, colorFormatNumbers } from "../types.ts";
-import type { PNG } from "../png.ts";
+import { type ColorFormat, colorFormatChannels, colorFormatNumbers, type EncodeOpts } from "../types.ts";
 
 const PNG_SIGNATURE = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -12,7 +11,7 @@ function writeIHDR(width: number, height: number, bitDepth: number, colorFormat:
 	view.setUint32(0, width);
 	view.setUint32(4, height);
 	buf[8] = bitDepth;
-	buf[9] = colorFormatNumbers[colorFormat];
+	buf[9] = colorFormatNumbers.get(colorFormat);
 	buf[10] = 0; // compression
 	buf[11] = 0; // filter
 	buf[12] = 0; // interlace
@@ -44,46 +43,37 @@ function writeChunk(type: string, data: Uint8Array): Uint8Array {
 	return chunk;
 }
 
-export function encodePng(png: PNG): Uint8Array {
-	const bitsPerPixel = colorFormatChannels[png.colorFormat] * png.bitDepth;
-	const bytesPerRow = Math.ceil((png.width * bitsPerPixel) / 8);
-	const expectedSize = bytesPerRow * png.height;
+export function encodePng(opts: EncodeOpts): Uint8Array {
+	const bitsPerPixel = colorFormatChannels.get(opts.colorFormat) * opts.bitDepth;
+	const bytesPerRow = Math.ceil((opts.width * bitsPerPixel) / 8);
+	const expectedSize = bytesPerRow * opts.height;
 
 	// Validation, this shouldn't happen if we were smart with the typing in PNG
-	if (png.bitDepth < 8 && png.colorFormat !== "GrayScale" && png.colorFormat !== "Indexed") {
+	if (opts.bitDepth < 8 && opts.colorFormat !== "GrayScale" && opts.colorFormat !== "Indexed") {
 		throw new Error("Bit depths < 8 only allowed for grayscale or indexed color");
 	}
-	if (png.bytes.length !== expectedSize) {
+	if (opts.raw.length !== expectedSize) {
 		throw new Error("Pixel data size mismatch");
 	}
 
 	const chunks: Uint8Array[] = [];
 	chunks.push(PNG_SIGNATURE);
-	chunks.push(writeIHDR(png.width, png.height, png.bitDepth, png.colorFormat));
+	chunks.push(writeIHDR(opts.width, opts.height, opts.bitDepth, opts.colorFormat));
 
-	if (png.colorFormat === "Indexed") {
-		if (!png.palette) throw new Error("Palette required for indexed color");
-		chunks.push(writeChunk("PLTE", png.palette));
+	if (opts.colorFormat === "Indexed") {
+		if (!opts.palette) throw new Error("Palette required for indexed color");
+		chunks.push(writeChunk("PLTE", opts.palette));
 	}
 
 	const scanlines: Uint8Array[] = [];
 
-	for (let y = 0; y < png.height; y++) {
+	for (let y = 0; y < opts.height; y++) {
 		const rowStart = y * bytesPerRow;
-		const rowPixels = png.bytes.subarray(rowStart, rowStart + bytesPerRow);
+		const rowPixels = opts.raw.subarray(rowStart, rowStart + bytesPerRow);
 
-		let encodedRow: Uint8Array;
-
-		if (png.bitDepth < 8) {
-			// pixelData is already bit-packed
-			encodedRow = rowPixels;
-		} else {
-			encodedRow = rowPixels;
-		}
-
-		const scanline = new Uint8Array(1 + encodedRow.length);
+		const scanline = new Uint8Array(1 + rowPixels.length);
 		scanline[0] = 0; // no filter
-		scanline.set(encodedRow, 1);
+		scanline.set(rowPixels, 1);
 		scanlines.push(scanline);
 	}
 

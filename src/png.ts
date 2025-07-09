@@ -1,58 +1,64 @@
 import { ArrOp, clamp, type Vec2 } from "@aurellis/helpers";
-import { PNGAlphaHandler } from "./alpha.ts";
 import { PNGCacheBatch, PNGCacheIndividual } from "./binary/cache.ts";
 import { decodePng } from "./binary/decode.ts";
-import { encodePng } from "./binary/encode.ts";
 import { PNGDrawUtility } from "./draw.ts";
 import { PNGFilterUtility } from "./filters.ts";
-import { ColorFormats, type BitDepth, type ColorFormat } from "./types.ts";
+import type { BitDepth, ColorFormat } from "./types.ts";
+
+class PNGFormatter {
+	private _indexedPalette?: Uint8Array;
+	/**
+	 * A utility class for validating and converting the image into supported PNG formats.
+	 * @param src The source image to format.
+	 */
+	constructor(public src: PNG) {}
+	/**
+	 * Check if the image is gray scale with no alpha.
+	 */
+	isGrayScale(): boolean {
+		let valid = true;
+		for (let i = 0; i < this.src.raw.length && valid; i += 4) {
+			valid = this.src.raw[i] == this.src.raw[i + 1] && this.src.raw[i] == this.src.raw[i + 2] && this.src.raw[i + 3] == 255;
+		}
+		return valid;
+	}
+	/**
+	 * Check if the image has no transparency.
+	 */
+	isRGB(): boolean {
+		let valid = true;
+		for (let i = 3; i < this.src.raw.length && valid; i += 4) {
+			valid = this.src.raw[i] == 255;
+		}
+		return valid;
+	}
+	/**
+	 * Check if the image can be represented by indexed color. This is rather slow as it has to manually perform color indexing.
+	 */
+	isIndexed(): boolean {
+		const dynamicPalette: Set<string> = new Set();
+		if(!this.isRGB()){
+			return false;
+		}
+		for (let i = 0; i < this.src.raw.length; i+=4) {
+			dynamicPalette.add(this.src.raw.subarray(i,i+3).toString());
+		}
+		if(dynamicPalette.size < 256)
+	}
+	/**
+	 * Check if the image can be represented as grayscale with alpha.
+	 */
+	isGrayScaleAlpha(): boolean {}
+	/**
+	 * Check if an image is valid RGBA, this should be called before other validators.
+	 * @param png The png to validate, this method requires width and height.
+	 */
+	isRGBA(): boolean {
+		return this.src.width * this.src.height * 4 === this.src.raw.length;
+	}
+}
 
 export class PNG {
-	private _palette?: Uint8Array = new Uint8Array();
-
-	get colorFormat() {
-		return this._colorFormat;
-	}
-
-	set colorFormat(x: ColorFormat) {
-		// TODO: implement raw transforms on format
-	}
-
-	get bitDepth() {
-		return this._bitDepth;
-	}
-
-	set bitDepth(depth: BitDepth) {
-		// This is such a stupid type assertation.
-		// TypeScript has noticed that the depth might be invalid, so it cries.
-		// EVEN THOUGH WE ARE LITERALLY DOING THE VALIDATION HERE!
-		if (!ColorFormats[this.colorFormat][depth as 8]) {
-			throw new Error(`Color format: ${this.colorFormat} cannot have a bit depth of ${depth}...`);
-		}
-		this._bitDepth = depth;
-	}
-
-	/**
-	 * The raw bytes of the pixel values, do not use this unless you know what you are doing.
-	 * These values will represent different things depending on the format of the image.
-	 */
-	get bytes() {
-		return this._raw;
-	}
-
-	/**
-	 * The palette of the indexed colors. This will be undefined if the colorFormat is not Indexed.
-	 */
-	get palette() {
-		return this._palette;
-	}
-
-	/**
-	 * Utility class for manipulating alpha values.
-	 */
-	get alphaHandler(): PNGAlphaHandler {
-		return new PNGAlphaHandler(this);
-	}
 	/**
 	 * Utility class for adding filters to the image.
 	 */
@@ -77,41 +83,115 @@ export class PNG {
 
 	/**
 	 * A class that handles many operations regarding PNG files.
-	 * @param _raw The raw pixel values, of the PNG.
+	 * @param raw The raw pixel values, of the PNG.
 	 * @param width The width of the PNG.
 	 * @param height The height of the PNG.
 	 * @param _colorFormat The color format of the PNG.
 	 * @param _bitDepth The bit depth of the pixel values.
 	 */
-	constructor(private _raw = new Uint8Array(), public width = 100, public height = 100, private _colorFormat: ColorFormat = "RGBA", private _bitDepth: BitDepth = 8) {
-		if (!_raw.length) {
+	constructor(public raw: Uint8Array = new Uint8Array(), public width = 100, public height = 100) {
+		if (!raw.length) {
 			this.draw.generateBlank();
 		}
 	}
 	/**
-	 * Read and import an image file.
+	 * Read and import an image file. If the image file uses transparency with a trns chunk, this will not be imported.
 	 * @param name The relative filepath of the image. ".png" is optional.
 	 */
-	read(name: string): PNG {
+	async read(name: string): Promise<PNG> {
 		name = /.*\.png$/.test(name) ? name : name + ".png";
-		return decodePng(Deno.readFileSync(name));
+		const dec = await decodePng(await Deno.readFile(name));
+		const out = new PNG(dec.raw, dec.width, dec.height);
+
+		// Unpack bits
+		switch (dec.bitDepth) {
+			case 1: {
+				const newRaw = new Uint8Array(out.raw.length * 8);
+				for (let i = 0; i < newRaw.length; i++) {
+					newRaw[i] = (out.raw[Math.floor(i / 8)] >> (7 - (i & 7))) & 1;
+				}
+				out.raw = newRaw;
+				break;
+			}
+			case 2: {
+				const newRaw = new Uint8Array(out.raw.length * 4);
+				for (let i = 0; i < newRaw.length; i++) {
+					newRaw[i] = (out.raw[Math.floor(i / 4)] >> (3 - (i & 3))) & 3;
+				}
+				out.raw = newRaw;
+				break;
+			}
+			case 4: {
+				const newRaw = new Uint8Array(out.raw.length * 2);
+				for (let i = 0; i < newRaw.length; i++) {
+					newRaw[i] = (out.raw[Math.floor(i / 2)] >> (1 - (i & 1))) & 15;
+				}
+				break;
+			}
+			default:
+				break;
+		}
+
+		// Reformat
+		switch (dec.colorFormat) {
+			case "GrayScale": {
+				const newRaw = new Uint8Array(out.raw.length * 4);
+				for (let i = 0; i < newRaw.length; i++) {
+					newRaw[i] = (i + 1) % 4 ? out.raw[Math.floor(i / 4)] : 255;
+				}
+				out.raw = newRaw;
+				break;
+			}
+			case "RGB": {
+				const newRaw = new Uint8Array((out.raw.length * 4) / 3);
+				for (let i = 0, oldI = 0; i < newRaw.length; i++) {
+					newRaw[i] = (i + 1) % 4 ? out.raw[oldI++] : 255;
+				}
+				out.raw = newRaw;
+				break;
+			}
+			case "Indexed": {
+				const newRaw = new Uint8Array(out.raw.length * 4);
+				for (let i = 0; i < newRaw.length; i++) {
+					newRaw[i] = (i + 1) % 4 ? dec.palette[out.raw[Math.floor(i / 4)] * 3 + (i % 4)] : 255;
+				}
+				out.raw = newRaw;
+				break;
+			}
+			case "GrayScaleAlpha": {
+				const newRaw = new Uint8Array(out.raw.length * 2);
+				for (let i = 0; i < newRaw.length; i++) {
+					newRaw[i] = i % 4 == 2 ? out.raw[Math.floor(i / 2) - 1] : out.raw[Math.floor(i / 2)];
+				}
+				out.raw = newRaw;
+				break;
+			}
+			default:
+				break;
+		}
+		return out;
 	}
 	/**
 	 * Get the value of a pixel on the image.
 	 * @param x The col (from the left) of the pixel.
 	 * @param y The row (from the top) of the pixel.
-	 * @returns A Uint8Array(4) of the pixel color. The pixel will always be transformed into RGBA 8888.
+	 * @returns A view of the raw pixel array at the specified coord.
 	 */
 	getPixel(x: number, y: number): Uint8Array {
-		return new Uint8Array();
+		const index = (clamp(y, [0, this.height]) * this.width + clamp(x, [0, this.width])) * 4;
+		return this.raw.subarray(index, index + 4);
 	}
 	/**
 	 * Set the value of a pixel on the image.
 	 * @param x The col (from the left) of the pixel.
 	 * @param y The row (from the top) of the pixel.
-	 * @param color The [red, green, blue, alpha?] to se the pixel to (0 - 255).
+	 * @param color The [red, green, blue, alpha?] to set the pixel to (0 - 255). This can also stretch over multiple colors to modify multiple pixels.
 	 */
 	setPixel(x: number, y: number, color: ArrayLike<number>): PNG {
+		const index = (clamp(y, [0, this.height]) * this.width + clamp(x, [0, this.width])) * 4;
+		for (let i = 0; i < color.length && index + i < this.raw.length; i++) {
+			this.raw[index + i] = color[i];
+		}
 		return this;
 	}
 	/**
@@ -130,16 +210,16 @@ export class PNG {
 		for (let row = 0; row < newDims[0]; row++) {
 			for (let col = 0; col < newDims[1]; col++) {
 				const oldIndex = 4 * (Math.round(row * factors[0]) * this.width + Math.round(col * factors[1]));
-				output[(row * newDims[1] + col) * 4] = this._raw[oldIndex];
-				output[(row * newDims[1] + col) * 4 + 1] = this._raw[oldIndex + 1];
-				output[(row * newDims[1] + col) * 4 + 2] = this._raw[oldIndex + 2];
-				output[(row * newDims[1] + col) * 4 + 3] = this._raw[oldIndex + 3];
+				output[(row * newDims[1] + col) * 4] = this.raw[oldIndex];
+				output[(row * newDims[1] + col) * 4 + 1] = this.raw[oldIndex + 1];
+				output[(row * newDims[1] + col) * 4 + 2] = this.raw[oldIndex + 2];
+				output[(row * newDims[1] + col) * 4 + 3] = this.raw[oldIndex + 3];
 			}
 		}
 
 		this.width = newDims[0];
 		this.height = newDims[1];
-		this._raw = output;
+		this.raw = output;
 		return this;
 	}
 	/**
@@ -149,23 +229,26 @@ export class PNG {
 	 */
 	function(affectAlpha: boolean, func: (index: number, array: Uint8Array) => number): PNG {
 		if (!affectAlpha) {
-			for (let i = 0; i < this._raw.length; i += (i + 2) % 4 ? 1 : 2) {
-				this._raw[i] = func(i, this._raw);
+			for (let i = 0; i < this.raw.length; i += (i + 2) % 4 ? 1 : 2) {
+				this.raw[i] = func(i, this.raw);
 			}
 		} else {
-			for (let i = 0; i < this._raw.length; i++) {
-				this._raw[i] = func(i, this._raw);
+			for (let i = 0; i < this.raw.length; i++) {
+				this.raw[i] = func(i, this.raw);
 			}
 		}
 		return this;
 	}
+
 	/**
-	 * Write the image to a file.
-	 * @param name The filepath to write to. ".png" is optional.
+	 * Write the PNG to a png file.
+	 * @param name The relative path of the image, ".png" is optional.
+	 * @param colorFormat Optional color format. If this is left blank, the image will automatically be reduced to the most optimal color format for filesize.
+	 * @param idealBitDepth The ideal number of bits per pixel, if this can't be attained, a higher number will be used.
 	 */
-	write(name: string = "im"): PNG {
+	write(name: string = "im", colorFormat?: ColorFormat, idealBitDepth: BitDepth = 1): PNG {
 		name = /.*\.png$/.test(name) ? name : name + ".png";
-		Deno.writeFileSync(name, encodePng(this));
+
 		return this;
 	}
 }
