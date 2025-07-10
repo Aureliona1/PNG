@@ -16,10 +16,10 @@ export type BitDepth = {
 }[keyof ColorFormatsType];
 
 export const colorFormatChannels = new TwoWayMap({
-	GrayScale: 1,
-	RGB: 3,
 	Indexed: 1,
+	GrayScale: 1,
 	GrayScaleAlpha: 2,
+	RGB: 3,
 	RGBA: 4
 });
 
@@ -72,3 +72,20 @@ export type EncodeOpts = {
 			  }
 	  ))
 );
+
+export const ticColorFormats = new TwoWayMap({
+	GrayScale: 1,
+	GrayScaleAlpha: 2,
+	RGB: 3,
+	RGBA: 4
+});
+
+export type TicDictEntry = {
+	byteStart: number;
+	width: number;
+	height: number;
+	colorFormat: keyof typeof ticColorFormats.map;
+	bitDepth: number;
+	nameLength: number;
+	name: string;
+};

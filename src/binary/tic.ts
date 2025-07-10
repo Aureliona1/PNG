@@ -1,18 +1,36 @@
 /*
-SIC format:
+Terrible Image Cache
 
+This format begins with a dictionary which references the metadata of all contained images.
+Then it has the datachunk which contains all image values with very minor compression.
+
+This cache format allows multiple images to be stored and accessed very quickly, but results in a larger file size.
+
+TIC format:
 dict length: Uint32
+dict entry[]
 
-nameLength: Uint32
-name: Uint8Array
-width: Uint32
-height: Uint32
-alpha: Uint8 - a byte boolean for if the image data will have alpha.
-bytestart: Uint32 - defines the byte offset in the datachunk of the start of the image.
+dict entry:
+	byteStart: Uint32
+	width: Uint32
+	height: Uint32
+	colorFormat + bitDepth byte:
+		bits 0 and 1: color format
+			0: GrayScale
+			1: GrayScaleAlpha
+			2: RGB
+			3: RGBA
+		bits 2 and 3: bit depth
+			0: 1 bit
+			1: 2 bit
+			2: 4 bit
+			3: 8 bit
+	nameLength: Uint8
+	name: Uint8Array up to 255 length
 
-the end of the image data chunk will be calculated from the width * height * (alpha ? 4 : 3).
+The end of each image's section in the datachunk will be calculated as byteStart + ceil(width * height * (colorFormat + 1) * 2^bitDepth / 8).
 
-dict entry length is defined as namelength + 17 bytes each
+Each dictionary entry takes 14 + nameLength bytes.
 
 datachunk: Uint8Array
 
@@ -20,23 +38,12 @@ datachunk: Uint8Array
 
 import { concatUint8 } from "@aurellis/helpers";
 import type { PNG } from "../png.ts";
+import { ticColorFormats, type TicDictEntry } from "../types.ts";
 
 /**
- * The format of a dictionary entry to a SIC.
+ * An interface to TIC cache files. Never construct this class by itself. Use the `cache.batch` member on PNG.
  */
-export type SicDictEntry = {
-	nameLength: number;
-	name: string;
-	width: number;
-	height: number;
-	alpha: boolean;
-	byteStart: number;
-};
-
-/**
- * An interface to SIC cache files. Never construct this class by itself. Use the `cache.batch` member on PNG.
- */
-export class SIC {
+export class TIC {
 	private static isASCII(str: string) {
 		for (let i = 0; i < str.length; i++) {
 			if (str.charCodeAt(i) > 127) {
@@ -47,36 +54,36 @@ export class SIC {
 	}
 
 	/**
-	 * Decode a binary SIC file.
-	 * @param raw The raw SIC binary.
-	 * @returns Decoded sic data.
+	 * Decode a binary TIC file.
+	 * @param raw The raw TIC binary.
+	 * @returns Decoded tic data.
 	 */
-	static decodeBinary(raw: Uint8Array): SIC {
+	static from(raw: Uint8Array): TIC {
 		const view = new DataView(raw.buffer);
 		const dictLength = view.getUint32(0);
-		const output = new SIC(dictLength, [], raw.slice(dictLength + 4));
+		const output = new TIC(dictLength, new Map(), raw.subarray(dictLength + 4));
 
-		for (let byteOffsetCursor = 4; byteOffsetCursor < dictLength + 4; ) {
-			const nameLength = view.getUint32(byteOffsetCursor);
-			byteOffsetCursor += 4;
-			const name = new TextDecoder().decode(raw.slice(byteOffsetCursor, byteOffsetCursor + nameLength), {});
-			byteOffsetCursor += nameLength;
-			const width = view.getUint32(byteOffsetCursor);
-			byteOffsetCursor += 4;
-			const height = view.getUint32(byteOffsetCursor);
-			byteOffsetCursor += 4;
-			const alpha = view.getUint8(byteOffsetCursor) ? true : false;
-			byteOffsetCursor++;
-			const byteStart = view.getUint32(byteOffsetCursor);
-			byteOffsetCursor += 4;
-			output.dict.push({ nameLength, name, width, height, alpha, byteStart });
+		for (let cursor = 4; cursor < dictLength + 4; ) {
+			const thisEntry: Partial<TicDictEntry> = {};
+			thisEntry.byteStart = view.getUint32(cursor);
+			cursor += 4;
+			thisEntry.width = view.getUint32(cursor);
+			cursor += 4;
+			thisEntry.height = view.getUint32(cursor);
+			cursor += 4;
+			thisEntry.colorFormat = ticColorFormats.revGet(((view.getUint8(cursor) >> 6) + 1) as 1 | 2 | 3 | 4);
+			thisEntry.bitDepth = 1 << ((view.getUint8(cursor++) >> 4) & 3);
+			thisEntry.nameLength = view.getUint8(cursor++);
+			thisEntry.name = new TextDecoder().decode(raw.subarray(cursor, cursor + thisEntry.nameLength));
+			cursor += thisEntry.nameLength;
+			output.dict.set(thisEntry.name, thisEntry as TicDictEntry);
 		}
 		return output;
 	}
 
-	constructor(public dictLength = 0, public dict: SicDictEntry[] = [], public dataChunk: Uint8Array = new Uint8Array()) {}
+	constructor(public dictLength = 0, public dict: Map<string, TicDictEntry> = new Map(), public dataChunk: Uint8Array = new Uint8Array()) {}
 	/**
-	 * Validates data entries on a sic object.
+	 * Validates data entries on a tic object.
 	 */
 	validate() {
 		// Accumulate dict length.
@@ -109,11 +116,11 @@ export class SIC {
 		}
 	}
 	/**
-	 * Remove a named entry from the SIC.
+	 * Remove a named entry from the TIC.
 	 * @param entryName The name of the entry.
 	 */
 	removeEntry(entryName: string) {
-		const nameFilter = (x: SicDictEntry) => x.name === entryName;
+		const nameFilter = (x: TicDictEntry) => x.name === entryName;
 		const metaData = this.dict.filter(nameFilter)[0];
 		if (metaData) {
 			// Modify the datachunk
@@ -136,7 +143,7 @@ export class SIC {
 		}
 	}
 	/**
-	 * Add an entry to the SIC.
+	 * Add an entry to the TIC.
 	 * @param name The name of the entry
 	 * @param im The image to add.
 	 * @param rmAlpha Whether to check for alpha and remove if possible.
@@ -165,7 +172,7 @@ export class SIC {
 	}
 
 	/**
-	 * Encode the SIC to binary.
+	 * Encode the TIC to binary.
 	 */
 	encode(): Uint8Array<ArrayBuffer> {
 		// Validate dict entries and chunk length.
