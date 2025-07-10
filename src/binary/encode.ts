@@ -43,7 +43,7 @@ function writeChunk(type: string, data: Uint8Array): Uint8Array {
 	return chunk;
 }
 
-export function encodePng(opts: EncodeOpts): Uint8Array {
+export function encode(opts: EncodeOpts): Uint8Array {
 	const bitsPerPixel = colorFormatChannels.get(opts.colorFormat) * opts.bitDepth;
 	const bytesPerRow = Math.ceil((opts.width * bitsPerPixel) / 8);
 	const expectedSize = bytesPerRow * opts.height;

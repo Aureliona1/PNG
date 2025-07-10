@@ -1,12 +1,16 @@
 import { ArrOp, clamp, type Vec2 } from "@aurellis/helpers";
 import { PNGCacheBatch, PNGCacheIndividual } from "./binary/cache.ts";
 import { decodePng } from "./binary/decode.ts";
-import { PNGDrawUtility } from "./draw.ts";
-import { PNGFilterUtility } from "./filters.ts";
+import { encode } from "./binary/encode.ts";
+import { PNGDraw } from "./draw.ts";
+import { PNGFilter } from "./filters.ts";
 import type { BitDepth, ColorFormat } from "./types.ts";
 
 class PNGFormatter {
-	private _indexedPalette?: Uint8Array;
+	// Helper functions to convert a 24-bit color to a number
+	private static c2n = (color: Uint8Array) => (color[0] << 16) + (color[1] << 8) + color[2];
+	private static n2c = (n: number) => new Uint8Array([(n & (0xff << 16)) >> 16, (n & (0xff << 8)) >> 8, n & 0xff]);
+	private _indexedPalette: Map<number, number> = new Map();
 	/**
 	 * A utility class for validating and converting the image into supported PNG formats.
 	 * @param src The source image to format.
@@ -18,9 +22,21 @@ class PNGFormatter {
 	isGrayScale(): boolean {
 		let valid = true;
 		for (let i = 0; i < this.src.raw.length && valid; i += 4) {
-			valid = this.src.raw[i] == this.src.raw[i + 1] && this.src.raw[i] == this.src.raw[i + 2] && this.src.raw[i + 3] == 255;
+			valid = this.src.raw[i] === this.src.raw[i + 1] && this.src.raw[i] === this.src.raw[i + 2] && this.src.raw[i + 3] === 255;
 		}
 		return valid;
+	}
+	/**
+	 * Transform the pixel array into a single-channel grayscale array.
+	 * Does not mutate the old raw.
+	 * This does not check whether the image is eligible to be grayscale, this must be done externally.
+	 */
+	toGrayScale(): Uint8Array {
+		const newRaw = new Uint8Array(this.src.raw.length / 4);
+		for (let i = 0; i < newRaw.length; i++) {
+			newRaw[i] = this.src.raw[Math.floor(i / 4)];
+		}
+		return newRaw;
 	}
 	/**
 	 * Check if the image has no transparency.
@@ -28,27 +44,92 @@ class PNGFormatter {
 	isRGB(): boolean {
 		let valid = true;
 		for (let i = 3; i < this.src.raw.length && valid; i += 4) {
-			valid = this.src.raw[i] == 255;
+			valid = this.src.raw[i] === 255;
 		}
 		return valid;
+	}
+	/**
+	 * Transform the pixel array into RGB with no alpha.
+	 * Does not mutate the old raw.
+	 * This does not check if the image is eligible to be RGB, this must be done externally.
+	 */
+	toRGB(): Uint8Array {
+		const newRaw = new Uint8Array((this.src.raw.length * 3) / 4);
+		for (let i = 0; i < newRaw.length / 3; i++) {
+			newRaw[i * 3] = this.src.raw[i * 4];
+			newRaw[i * 3 + 1] = this.src.raw[i * 4 + 1];
+			newRaw[i * 3 + 2] = this.src.raw[i * 4 + 2];
+		}
+		return newRaw;
 	}
 	/**
 	 * Check if the image can be represented by indexed color. This is rather slow as it has to manually perform color indexing.
 	 */
 	isIndexed(): boolean {
-		const dynamicPalette: Set<string> = new Set();
-		if(!this.isRGB()){
+		// Gotta comment ts bc there's a lot going on here
+
+		// No point trying if we have alpha
+		if (!this.isRGB()) return false;
+
+		// Unique set of image colors.
+		this._indexedPalette.clear();
+		for (let i = 0; i < this.src.raw.length; i += 4) {
+			const key = PNGFormatter.c2n(this.src.raw.subarray(i, i + 3));
+			if (!this._indexedPalette.has(key)) {
+				this._indexedPalette.set(key, this._indexedPalette.size);
+			}
+		}
+
+		// If there are too many colors
+		if (this._indexedPalette.size > 256) {
+			this._indexedPalette.clear();
 			return false;
 		}
-		for (let i = 0; i < this.src.raw.length; i+=4) {
-			dynamicPalette.add(this.src.raw.subarray(i,i+3).toString());
+
+		return true;
+	}
+	/**
+	 * Transform the pixel array into indexed color.
+	 * This does not mutate the old pixel array.
+	 * This will check that the image is eligible to be indexed, and will return two empty Uint8Arrays if the image is not.
+	 */
+	toIndexed(): [Uint8Array, Uint8Array] {
+		if (!this._indexedPalette.size) {
+			if (!this.isIndexed()) {
+				return [new Uint8Array(), new Uint8Array()];
+			}
 		}
-		if(dynamicPalette.size < 256)
+		const palette = new Uint8Array(this._indexedPalette.size * 3);
+		this._indexedPalette.forEach((i, col) => {
+			palette.set(PNGFormatter.n2c(col), i * 3);
+		});
+		const newRaw = new Uint8Array(this.src.raw.length / 4);
+		for (let i = 0; i < newRaw.length; i++) {
+			newRaw[i] = this._indexedPalette.get(PNGFormatter.c2n(this.src.raw.subarray(i * 4, i * 4 + 3))) ?? 0;
+		}
+		return [palette, newRaw];
 	}
 	/**
 	 * Check if the image can be represented as grayscale with alpha.
 	 */
-	isGrayScaleAlpha(): boolean {}
+	isGrayScaleAlpha(): boolean {
+		if (this.isGrayScale()) {
+			let consistentAlpha = true;
+			for (let i = 3; i < this.src.raw.length && consistentAlpha; i += 4) {
+				consistentAlpha = this.src.raw[i] === 255;
+			}
+			return !consistentAlpha;
+		}
+		return false;
+	}
+	toGrayScaleAlpha(): Uint8Array {
+		const newRaw = new Uint8Array(this.src.raw.length / 2);
+		for (let i = 0; i < newRaw.length; i += 2) {
+			newRaw[i] = this.src.raw[i * 4];
+			newRaw[i + 1] = this.src.raw[i * 4 + 3];
+		}
+		return newRaw;
+	}
 	/**
 	 * Check if an image is valid RGBA, this should be called before other validators.
 	 * @param png The png to validate, this method requires width and height.
@@ -62,8 +143,8 @@ export class PNG {
 	/**
 	 * Utility class for adding filters to the image.
 	 */
-	get filter(): PNGFilterUtility {
-		return new PNGFilterUtility(this);
+	get filter(): PNGFilter {
+		return new PNGFilter(this);
 	}
 	/**
 	 * Utility classes for caching the image in different ways.
@@ -77,8 +158,8 @@ export class PNG {
 	/**
 	 * Utility class for drawing shapes, lines, and patterns on the image.
 	 */
-	get draw(): PNGDrawUtility {
-		return new PNGDrawUtility(this);
+	get draw(): PNGDraw {
+		return new PNGDraw(this);
 	}
 
 	/**
@@ -96,40 +177,22 @@ export class PNG {
 	}
 	/**
 	 * Read and import an image file. If the image file uses transparency with a trns chunk, this will not be imported.
-	 * @param name The relative filepath of the image. ".png" is optional.
+	 * @param path The relative filepath of the image. ".png" is optional.
 	 */
-	async read(name: string): Promise<PNG> {
-		name = /.*\.png$/.test(name) ? name : name + ".png";
-		const dec = await decodePng(await Deno.readFile(name));
+	async read(path: string): Promise<PNG> {
+		path = /.*\.png$/.test(path) ? path : path + ".png";
+		const dec = await decodePng(await Deno.readFile(path));
 		const out = new PNG(dec.raw, dec.width, dec.height);
 
 		// Unpack bits
-		switch (dec.bitDepth) {
-			case 1: {
-				const newRaw = new Uint8Array(out.raw.length * 8);
-				for (let i = 0; i < newRaw.length; i++) {
-					newRaw[i] = (out.raw[Math.floor(i / 8)] >> (7 - (i & 7))) & 1;
-				}
-				out.raw = newRaw;
-				break;
+		if (dec.bitDepth < 8) {
+			const newRaw = new Uint8Array((out.raw.length * 8) / dec.bitDepth);
+			const maxOffset = 8 / dec.bitDepth - 1;
+			const modulo = (1 << dec.bitDepth) - 1;
+			for (let i = 0; i < newRaw.length; i++) {
+				newRaw[i] = (out.raw[Math.floor((i * 8) / dec.bitDepth)] >> (maxOffset - (i & maxOffset))) & modulo;
 			}
-			case 2: {
-				const newRaw = new Uint8Array(out.raw.length * 4);
-				for (let i = 0; i < newRaw.length; i++) {
-					newRaw[i] = (out.raw[Math.floor(i / 4)] >> (3 - (i & 3))) & 3;
-				}
-				out.raw = newRaw;
-				break;
-			}
-			case 4: {
-				const newRaw = new Uint8Array(out.raw.length * 2);
-				for (let i = 0; i < newRaw.length; i++) {
-					newRaw[i] = (out.raw[Math.floor(i / 2)] >> (1 - (i & 1))) & 15;
-				}
-				break;
-			}
-			default:
-				break;
+			out.raw = newRaw;
 		}
 
 		// Reformat
@@ -161,7 +224,7 @@ export class PNG {
 			case "GrayScaleAlpha": {
 				const newRaw = new Uint8Array(out.raw.length * 2);
 				for (let i = 0; i < newRaw.length; i++) {
-					newRaw[i] = i % 4 == 2 ? out.raw[Math.floor(i / 2) - 1] : out.raw[Math.floor(i / 2)];
+					newRaw[i] = i % 4 === 2 ? out.raw[Math.floor(i / 2) - 1] : out.raw[Math.floor(i / 2)];
 				}
 				out.raw = newRaw;
 				break;
@@ -200,10 +263,10 @@ export class PNG {
 	 * @param scale The [width, height] of the new image.
 	 */
 	scale(type: "px" | "factor", scale: Vec2 | number): PNG {
-		if (typeof scale == "number") {
+		if (typeof scale === "number") {
 			scale = [scale, scale] as Vec2;
 		}
-		const newDims = (type == "factor" ? [scale[0] * this.height, scale[1] * this.width] : scale).map(x => Math.floor(x)),
+		const newDims = (type === "factor" ? [scale[0] * this.height, scale[1] * this.width] : scale).map(x => Math.floor(x)),
 			factors = ArrOp.divide([this.width, this.height], newDims),
 			output = new Uint8Array(newDims[0] * newDims[1] * 4);
 
@@ -240,14 +303,134 @@ export class PNG {
 		return this;
 	}
 
+	private paletteBitDepth(len: number): BitDepth {
+		if (len <= 2) {
+			return 1;
+		}
+		if (len <= 4) {
+			return 2;
+		}
+		if (len <= 16) {
+			return 4;
+		}
+		return 8;
+	}
+
 	/**
 	 * Write the PNG to a png file.
-	 * @param name The relative path of the image, ".png" is optional.
+	 * @param path The relative path of the image, ".png" is optional.
 	 * @param colorFormat Optional color format. If this is left blank, the image will automatically be reduced to the most optimal color format for filesize.
-	 * @param idealBitDepth The ideal number of bits per pixel, if this can't be attained, a higher number will be used.
+	 * @param grayScaleBitDepth The bitdepth of the image if it able to be represented as grayscale, this does nothing if the resulting image is not grayscale.
 	 */
-	write(name: string = "im", colorFormat?: ColorFormat, idealBitDepth: BitDepth = 1): PNG {
-		name = /.*\.png$/.test(name) ? name : name + ".png";
+	async write(path: string = "im", colorFormat?: ColorFormat, grayScaleBitDepth: BitDepth = 8): Promise<PNG> {
+		path = /.*\.png$/.test(path) ? path : path + ".png";
+		const formatter = new PNGFormatter(this);
+		// Quick validation
+		if (!formatter.isRGBA()) throw new Error(`Image dimensions do not match pixel array length, expected ${this.width * this.height * 4}, got ${this.raw.length}...`);
+
+		// If the user has a specified format.
+		switch (colorFormat) {
+			case "GrayScale":
+				colorFormat = formatter.isGrayScale() ? colorFormat : undefined;
+				break;
+			case "RGB":
+				colorFormat = formatter.isRGB() ? colorFormat : undefined;
+				break;
+			case "Indexed":
+				colorFormat = formatter.isIndexed() ? colorFormat : undefined;
+				break;
+			case "GrayScaleAlpha":
+				colorFormat = formatter.isGrayScaleAlpha() ? colorFormat : undefined;
+				break;
+			case "RGBA":
+				colorFormat = formatter.isRGBA() ? colorFormat : undefined;
+				break;
+			default:
+				break;
+		}
+
+		// Auto optimise format fallback
+		let plte: Uint8Array = new Uint8Array();
+		let outRaw: Uint8Array = new Uint8Array();
+		if (!colorFormat) {
+			// First we see if it is indexed
+			if (formatter.isIndexed()) {
+				[plte, outRaw] = formatter.toIndexed();
+				colorFormat = "Indexed";
+			}
+			// Now check if it can be grayscale, and if that would be more efficient.
+			// This doesn't consider the size of the plte.
+			if (formatter.isGrayScale()) {
+				if (plte.length) {
+					const indexedBits = this.paletteBitDepth(plte.length);
+					if (indexedBits >= grayScaleBitDepth) {
+						colorFormat = "GrayScale";
+					}
+				} else {
+					colorFormat = "GrayScale";
+				}
+			} else if (formatter.isGrayScaleAlpha() && !plte.length) {
+				colorFormat = "GrayScaleAlpha";
+			} else if (formatter.isRGB() && !plte.length) {
+				colorFormat = "RGB";
+			} else if (!plte.length) {
+				colorFormat = "RGBA";
+			}
+		}
+
+		// Actually do formatting and bitdepth assignment.
+		let bitDepth: BitDepth = 8;
+		if (colorFormat == "Indexed" && plte.length) {
+			bitDepth = this.paletteBitDepth(plte.length);
+		} else {
+			switch (colorFormat) {
+				case "GrayScale": {
+					bitDepth = grayScaleBitDepth;
+					outRaw = formatter.toGrayScale();
+					break;
+				}
+				case "GrayScaleAlpha": {
+					outRaw = formatter.toGrayScaleAlpha();
+					bitDepth = 8;
+					break;
+				}
+				case "Indexed": {
+					[plte, outRaw] = formatter.toIndexed();
+					bitDepth = this.paletteBitDepth(plte.length);
+					break;
+				}
+				case "RGB": {
+					outRaw = formatter.toRGB();
+					bitDepth = 8;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+
+		// Pack bits if needed.
+		if (bitDepth < 8) {
+			const newRaw = new Uint8Array((outRaw.length * bitDepth) / 8);
+			const valuesPerByte = 8 / bitDepth;
+			for (let i = 0; i < newRaw.length; i++) {
+				for (let j = 0; j < valuesPerByte; j++) {
+					newRaw[i] += (this.raw[(i * 8) / bitDepth + j] >> (8 - bitDepth)) << (valuesPerByte - j - 1);
+				}
+			}
+			outRaw = newRaw;
+		}
+
+		let bin: Uint8Array;
+		if (colorFormat == "Indexed") {
+			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat, palette: plte, bitDepth: bitDepth });
+		} else if (colorFormat == "GrayScale") {
+			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });
+		} else {
+			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: 8 });
+		}
+
+		await Deno.writeFile(path, bin);
 
 		return this;
 	}

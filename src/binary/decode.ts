@@ -90,7 +90,7 @@ export async function decodePng(image: Uint8Array): Promise<DecodeResult> {
 		outOffset += rowLength;
 	}
 
-	if (colorFormat == "Indexed") {
+	if (colorFormat === "Indexed") {
 		return {
 			raw,
 			palette: palette ?? new Uint8Array(),

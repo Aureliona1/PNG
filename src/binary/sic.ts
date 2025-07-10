@@ -113,7 +113,7 @@ export class SIC {
 	 * @param entryName The name of the entry.
 	 */
 	removeEntry(entryName: string) {
-		const nameFilter = (x: SicDictEntry) => x.name == entryName;
+		const nameFilter = (x: SicDictEntry) => x.name === entryName;
 		const metaData = this.dict.filter(nameFilter)[0];
 		if (metaData) {
 			// Modify the datachunk

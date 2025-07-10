@@ -17,7 +17,7 @@ export class PNGCacheIndividual {
 		this.dir = Array.from(Deno.readDirSync(path));
 	}
 	/**
-	 * Attempt to read an image from the cache. This will set all the data on the current image to teh read image. If no image with the specified name exists, then a blank image will be returned an the original image will be unmodified.
+	 * Attempt to read an image from the cache. This will set all the data on the current image to the read image. If no image with the specified name exists, then a blank image will be returned an the original image will be unmodified.
 	 * @param name The name of the image in the cache.
 	 */
 	read(name = ""): PNG {
@@ -78,7 +78,7 @@ export class PNGCacheBatch {
 	 * @returns A reference to the new image.
 	 */
 	read(name = ""): PNG {
-		const metaData = this.sic.dict.filter(x => x.name == name)[0];
+		const metaData = this.sic.dict.filter(x => x.name === name)[0];
 		if (metaData) {
 			this.src.width = metaData.width;
 			this.src.height = metaData.height;
@@ -97,7 +97,7 @@ export class PNGCacheBatch {
 	 * @param name The name of the entry in the SIC.
 	 */
 	write(name = "") {
-		const existingImage = this.sic.dict.filter(x => x.name == name)[0];
+		const existingImage = this.sic.dict.filter(x => x.name === name)[0];
 		if (existingImage) {
 			this.sic.removeEntry(existingImage.name);
 		}

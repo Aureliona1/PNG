@@ -4,13 +4,13 @@ import type { PNG } from "./png.ts";
 /**
  * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
  */
-export class PNGFilterUtility {
+export class PNGFilter {
 	private i2c(i: number): Vec2 {
 		return [Math.floor(Math.floor(i / 4) / this.src.width), Math.floor(i / 4) % this.src.width];
 	}
 	private getNeighbours(i: number, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical") {
 		const coord = this.i2c(i);
-		const n = new Uint8Array(neighbourhood == "Moore" ? 32 : neighbourhood == "Von-Neumann" ? 16 : 8);
+		const n = new Uint8Array(neighbourhood === "Moore" ? 32 : neighbourhood === "Von-Neumann" ? 16 : 8);
 		switch (neighbourhood) {
 			case "Moore":
 				n.set(this.src.getPixel(coord[0] - 1, coord[1] - 1));
@@ -44,7 +44,7 @@ export class PNGFilterUtility {
 	 * Over or under expose the image.
 	 * @param factor The multiplier to expose the image to (1 - no change)
 	 */
-	exposure(factor: number): PNGFilterUtility {
+	exposure(factor: number): PNGFilter {
 		this.src.function(false, (i, a) => clamp(a[i] * factor, [0, 255]));
 		return this;
 	}
@@ -54,7 +54,7 @@ export class PNGFilterUtility {
 	 * @param satFac 1 - no effect
 	 * @param valFac 1 - no effect
 	 */
-	hsv(hueShift: number, satFac: number, valFac: number): PNGFilterUtility {
+	hsv(hueShift: number, satFac: number, valFac: number): PNGFilter {
 		for (let i = 0; i < this.src.raw.length / 4; i++) {
 			const hsv = byteRgbToHsv(this.src.raw.subarray(i * 4, i * 4 + 3));
 			hsv[0] = (hsv[0] + hueShift * 255) % 255;
@@ -69,7 +69,7 @@ export class PNGFilterUtility {
 	 * Apply contrasting to image
 	 * @param factor 1 - no effect
 	 */
-	contrast(factor: number, thresh = 0.5): PNGFilterUtility {
+	contrast(factor: number, thresh = 0.5): PNGFilter {
 		this.src.function(false, (i, a) => this.cf(a[i] / 255, factor, thresh) * 255);
 		return this;
 	}
@@ -84,7 +84,7 @@ export class PNGFilterUtility {
 	 * Von-Neumann - Combines horizontal and vertical. (Meduim)
 	 * Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
 	 */
-	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): PNGFilterUtility {
+	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): PNGFilter {
 		const sumEvery = (arr: Uint8Array, start: number, skip: number) => {
 			let sum = 0;
 			for (let i = start; i < arr.length; i += skip) {
@@ -113,7 +113,7 @@ export class PNGFilterUtility {
 	 * @param colors The number of available colors to use.
 	 * @param dither Whether to apply dithering to the quantised image (Default - false).
 	 */
-	quantise(colors: number, dither = false): PNGFilterUtility {
+	quantise(colors: number, dither = false): PNGFilter {
 		const q = (i: number) => Math.round(i * colors) / colors;
 		if (dither) {
 			this.src.raw = new Uint8Array(
@@ -147,7 +147,7 @@ export class PNGFilterUtility {
 	 * @param contrast The contrast factor to add over the image. (Default - 5).
 	 * @param contrastThresh The threshold to apply contrast to. (Default - 0.05)
 	 */
-	edgeDetect(width = 1, contrast = 5, contrastThresh = 0.05): PNGFilterUtility {
+	edgeDetect(width = 1, contrast = 5, contrastThresh = 0.05): PNGFilter {
 		this.src.function(false, (i, arr) => {
 			const val = Math.min(
 				Math.abs(i < this.src.width * 4 * width ? 255 : arr[i] - arr[i - this.src.width * 4 * width]), // Up
@@ -167,7 +167,7 @@ export class PNGFilterUtility {
 	 * If amount is negative, the image will go from full bleed at the top to no bleed at the bottom (i.e,. reversed).
 	 * @param progressionEasing Optional easing to add to a progressive bleed.
 	 */
-	bleed(amount: number, progressive = false, progressionEasing?: Easing): PNGFilterUtility {
+	bleed(amount: number, progressive = false, progressionEasing?: Easing): PNGFilter {
 		for (let i = 0; i < this.src.raw.length / 4; i++) {
 			if (Math.random() < lerp(0, 1, lerp(progressive ? (amount >= 0 ? 0 : 1) : amount, progressive ? (amount > 0 ? 1 : 0) : amount, lerp(0, 1, i / this.src.raw.length, progressionEasing), "easeOutExpo"), "easeOutCirc")) {
 				if (i > this.src.width) {
@@ -183,7 +183,7 @@ export class PNGFilterUtility {
 	 * Apply tint effect to image by over/under exposing color channels.
 	 * @param color The color to tint the image (gamma rgb: 0 - 255), (Default - [255, 255, 255, 255]).
 	 */
-	tint(color: Uint8Array = new Uint8Array([255, 255, 255, 255])): PNGFilterUtility {
+	tint(color: Uint8Array = new Uint8Array([255, 255, 255, 255])): PNGFilter {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
 			this.src.raw[i] = clamp((this.src.raw[i] * (color[0] ?? 255)) / 255, [0, 255]);
 			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] * (color[1] ?? 255)) / 255, [0, 255]);
@@ -196,7 +196,7 @@ export class PNGFilterUtility {
 	 * Remove potential tints on the image by reversing tint function. This will not work if the original tint color contains a 0.
 	 * @param color The color to attemt to untint from (gamma rgb: 0 - 255), (Default - [255, 255, 255, 255]).
 	 */
-	unTint(color: Uint8Array = new Uint8Array([255, 255, 255, 255])): PNGFilterUtility {
+	unTint(color: Uint8Array = new Uint8Array([255, 255, 255, 255])): PNGFilter {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
 			this.src.raw[i] = clamp((this.src.raw[i] / (color[0] ?? 255)) * 255, [0, 255]);
 			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] / (color[1] ?? 255)) * 255, [0, 255]);
@@ -211,16 +211,16 @@ export class PNGFilterUtility {
 	 * @param g The green offset (integer value in pixels), (Default - 2).
 	 * @param b The blue offset (integer value in pixels), (Default - 3).
 	 */
-	chrAb(r = 1, g = 2, b = 3): PNGFilterUtility {
+	chrAb(r = 1, g = 2, b = 3): PNGFilter {
 		this.src.function(false, (i, a) => {
 			if (i % (this.src.width * 4) > Math.max(r, g, b) * 4) {
-				if (i % 4 == 0) {
+				if (i % 4 === 0) {
 					a[i - Math.floor(r) * 4] = a[i];
 				}
-				if (i % 4 == 1) {
+				if (i % 4 === 1) {
 					a[i - Math.floor(g) * 4] = a[i];
 				}
-				if (i % 4 == 2) {
+				if (i % 4 === 2) {
 					a[i - Math.floor(b) * 4] = a[i];
 				}
 			}
@@ -233,7 +233,7 @@ export class PNGFilterUtility {
 	 * @param img The image to overlay.
 	 * @param factor The factor (0-1) of the new image.
 	 */
-	mixImage(img: PNG, factor = 0.5): PNGFilterUtility {
+	mixImage(img: PNG, factor = 0.5): PNGFilter {
 		for (let row = 0; row < (img.height > this.src.height ? this.src.height : img.height); row++) {
 			const srcRowData = this.src.raw.subarray(row * this.src.width * 4, (row + 1) * this.src.width * 4);
 			srcRowData.set(ArrOp.lerp(srcRowData, img.raw.subarray(row * img.width * 4, (row + 1) * img.width * 4), factor));
@@ -245,7 +245,7 @@ export class PNGFilterUtility {
 	 * @param color The color to overlay (gamma rgb 0 - 255).
 	 * @param factor The factor (0-1) of the fade between colors.
 	 */
-	mixColor(color: Vec4 = [255, 255, 255, 255], factor = 0.5): PNGFilterUtility {
+	mixColor(color: Vec4 = [255, 255, 255, 255], factor = 0.5): PNGFilter {
 		this.src.raw = this.src.raw.map((x, i) => Math.round(lerp(x, color[i % 4], factor)));
 		return this;
 	}

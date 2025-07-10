@@ -5,7 +5,7 @@ import { makeNoise3D } from "./vendor/noise.ts";
 /**
  * This is a utility class that can add shapes, lines, and patterns to an image. It should never be constructed by itself. Always use the `draw` member on a PNG.
  */
-export class PNGDrawUtility {
+export class PNGDraw {
 	constructor(public src: PNG) {}
 	/**
 	 * Fill the image with a specific color.
@@ -41,7 +41,7 @@ export class PNGDrawUtility {
 					this.src.setPixel(start[0] + i, start[1] + j, color);
 				}
 			}
-			if (start[0] == end[0] && start[1] == end[1]) {
+			if (start[0] === end[0] && start[1] === end[1]) {
 				break;
 			}
 			const e2 = 2 * err;

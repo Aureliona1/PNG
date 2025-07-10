@@ -27,7 +27,7 @@ export function encodeSICI(image: PNG) {
  */
 export function decodeSICI(input: Uint8Array): PNG {
 	const view = new DataView(input.buffer);
-	const hasAlpha = view.getUint8(16) == 1;
+	const hasAlpha = view.getUint8(16) === 1;
 	const im = new PNG();
 	im.width = view.getFloat64(0);
 	im.height = view.getFloat64(8);
