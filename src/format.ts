@@ -1,5 +1,5 @@
 import type { PNG } from "./png.ts";
-import { colorFormatChannels, type DecodeResult } from "./types.ts";
+import { type BitDepth, colorFormatChannels, type DecodeResult } from "./types.ts";
 
 export class PNGFormatterTo {
 	// Helper functions to convert a 24-bit color to a number
@@ -210,4 +210,42 @@ export class PNGFormatterFrom {
 		}
 		return newRaw;
 	}
+}
+
+/**
+ * Take an array of bytes and return the array with the bits packed to the desired bit depth.
+ * @param bytes The input bytes.
+ * @param desiredBitDepth The desired bit depth.
+ * @returns A new packed array, does not mutate the original array.
+ */
+export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth): Uint8Array {
+	if (desiredBitDepth < 8) {
+		const newRaw = new Uint8Array((bytes.length * desiredBitDepth) / 8);
+		const valuesPerByte = 8 / desiredBitDepth;
+		for (let i = 0; i < newRaw.length; i++) {
+			for (let j = 0; j < valuesPerByte; j++) {
+				newRaw[i] += (bytes[(i * 8) / desiredBitDepth + j] >> (8 - desiredBitDepth)) << (valuesPerByte - j - 1);
+			}
+		}
+		return newRaw;
+	}
+	return bytes;
+}
+
+/**
+ * Take an array of packed bits and return the unpacked bytes.
+ * @param bits The bit-packed array.
+ * @param currentBitDepth The current bit depth to unpack.
+ */
+export function unpackBits(bits: Uint8Array, currentBitDepth: BitDepth): Uint8Array {
+	if (currentBitDepth < 8) {
+		const newRaw = new Uint8Array((bits.length * 8) / currentBitDepth);
+		const maxOffset = 8 / currentBitDepth - 1;
+		const modulo = (1 << currentBitDepth) - 1;
+		for (let i = 0; i < newRaw.length; i++) {
+			newRaw[i] = (bits[Math.floor((i * 8) / currentBitDepth)] >> (maxOffset - (i & maxOffset))) & modulo;
+		}
+		return newRaw;
+	}
+	return bits;
 }

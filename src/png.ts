@@ -1,28 +1,74 @@
-import { ArrOp, clamp, type Vec2 } from "@aurellis/helpers";
-import { PNGCacheBatch, PNGCacheIndividual } from "./binary/cache.ts";
+import { ArrOp, clamp, clog, type Vec2 } from "@aurellis/helpers";
+import { PNGCache } from "./binary/cache.ts";
 import { decodePng } from "./binary/decode.ts";
 import { encode } from "./binary/encode.ts";
 import { PNGDraw } from "./draw.ts";
 import { PNGFilter } from "./filters.ts";
 import type { BitDepth, ColorFormat } from "./types.ts";
-import { PNGFormatterFrom, PNGFormatterTo } from "./format.ts";
+import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "./format.ts";
 
 export class PNG {
+	/**
+	 * Read and import an image file. If the image file uses transparency with a trns chunk, this will not be imported.
+	 * @param path The relative filepath of the image. ".png" is optional.
+	 */
+	static async fromFile(path: string): Promise<PNG> {
+		path = /.*\.png$/.test(path) ? path : path + ".png";
+		let bin = new Uint8Array();
+		try {
+			bin = await Deno.readFile(path);
+		} catch (_) {
+			clog(`Unable to open ${path}, image will be blank...`, "Error", "PNG");
+			return new PNG();
+		}
+
+		const dec = await decodePng(bin);
+		const out = new PNG(dec.raw, dec.width, dec.height);
+
+		// Unpack bits
+		out.raw = unpackBits(out.raw, dec.bitDepth);
+
+		// Format to RGBA
+		const formatter = new PNGFormatterFrom(dec);
+		if (formatter.isCorrectFormat()) {
+			if (dec.colorFormat !== "RGBA") {
+				out.raw = formatter[`from${dec.colorFormat}`]();
+			}
+		} else {
+			clog(`Image ${path} does not contain a supported format, image will be blank...`, "Error", "PNG");
+			return new PNG();
+		}
+
+		return out;
+	}
+
+	/**
+	 * Construct a PNG from the cache. This is the same as {@link PNG.cache.read}.
+	 * @param entryName The name of the image in the cache.
+	 * @returns The cached image, or a blank image if the image isn't in the cache.
+	 */
+	static fromCache(entryName: string) {
+		return PNG.cache.read(entryName);
+	}
+
+	/**
+	 * Global PNG cache wrapper.
+	 *
+	 * {@link PNG.cache.read} is the same as {@link PNG.fromCache}.
+	 *
+	 * {@link PNG.cache.write} is the same as {@link this.writeCache}.
+	 */
+	static get cache() {
+		return new PNGCache();
+	}
+
 	/**
 	 * Utility class for adding filters to the image.
 	 */
 	get filter(): PNGFilter {
 		return new PNGFilter(this);
 	}
-	/**
-	 * Utility classes for caching the image in different ways.
-	 */
-	get cache(): { batch: PNGCacheBatch; individual: PNGCacheIndividual } {
-		return {
-			batch: new PNGCacheBatch(this),
-			individual: new PNGCacheIndividual(this)
-		};
-	}
+
 	/**
 	 * Utility class for drawing shapes, lines, and patterns on the image.
 	 */
@@ -43,37 +89,7 @@ export class PNG {
 			this.draw.generateBlank();
 		}
 	}
-	/**
-	 * Read and import an image file. If the image file uses transparency with a trns chunk, this will not be imported.
-	 * @param path The relative filepath of the image. ".png" is optional.
-	 */
-	async read(path: string): Promise<PNG> {
-		path = /.*\.png$/.test(path) ? path : path + ".png";
-		const dec = await decodePng(await Deno.readFile(path));
-		const out = new PNG(dec.raw, dec.width, dec.height);
 
-		// Unpack bits
-		if (dec.bitDepth < 8) {
-			const newRaw = new Uint8Array((out.raw.length * 8) / dec.bitDepth);
-			const maxOffset = 8 / dec.bitDepth - 1;
-			const modulo = (1 << dec.bitDepth) - 1;
-			for (let i = 0; i < newRaw.length; i++) {
-				newRaw[i] = (out.raw[Math.floor((i * 8) / dec.bitDepth)] >> (maxOffset - (i & maxOffset))) & modulo;
-			}
-			out.raw = newRaw;
-		}
-
-		const formatter = new PNGFormatterFrom(dec);
-		if (formatter.isCorrectFormat()) {
-			if (dec.colorFormat !== "RGBA") {
-				out.raw = formatter[`from${dec.colorFormat}`]();
-			}
-		} else {
-			throw new Error("Image format is incorrect, check that the file isn't corrupted...");
-		}
-
-		return out;
-	}
 	/**
 	 * Get the value of a pixel on the image.
 	 * @param x The col (from the left) of the pixel.
@@ -162,7 +178,7 @@ export class PNG {
 	 * @param colorFormat Optional color format. If this is left blank, the image will automatically be reduced to the most optimal color format for filesize.
 	 * @param grayScaleBitDepth The bitdepth of the image if it able to be represented as grayscale, this does nothing if the resulting image is not grayscale.
 	 */
-	async write(path: string = "im", colorFormat?: ColorFormat, grayScaleBitDepth: BitDepth = 8): Promise<PNG> {
+	async writeFile(path: string = "im", colorFormat?: ColorFormat, grayScaleBitDepth: BitDepth = 8): Promise<PNG> {
 		path = /.*\.png$/.test(path) ? path : path + ".png";
 		const formatter = new PNGFormatterTo(this);
 		// Quick validation
@@ -219,28 +235,26 @@ export class PNG {
 		}
 
 		// Pack bits if needed.
-		if (bitDepth < 8) {
-			const newRaw = new Uint8Array((outRaw.length * bitDepth) / 8);
-			const valuesPerByte = 8 / bitDepth;
-			for (let i = 0; i < newRaw.length; i++) {
-				for (let j = 0; j < valuesPerByte; j++) {
-					newRaw[i] += (this.raw[(i * 8) / bitDepth + j] >> (8 - bitDepth)) << (valuesPerByte - j - 1);
-				}
-			}
-			outRaw = newRaw;
-		}
+		outRaw = packBits(outRaw, bitDepth);
 
 		let bin: Uint8Array;
 		if (colorFormat == "Indexed") {
 			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat, palette: plte, bitDepth: bitDepth });
-		} else if (colorFormat == "GrayScale") {
-			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });
 		} else {
-			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: 8 });
+			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });
 		}
 
 		await Deno.writeFile(path, bin);
 
 		return this;
+	}
+
+	/**
+	 * Write the image to the PNG cache. This is the same as the static call {@link PNG.cache.write}.
+	 * @param entryName The name that this image will have in the cache.
+	 * @param bitDepth The bit depth of the image, lower values will reduce the size of the cache file but also reduce image quality.
+	 */
+	writeCache(entryName = "", bitDepth: BitDepth = 8) {
+		PNG.cache.write(entryName, this, bitDepth);
 	}
 }

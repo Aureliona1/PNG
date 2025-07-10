@@ -55,22 +55,15 @@ export type EncodeOpts = {
 	raw: Uint8Array;
 	width: number;
 	height: number;
+	bitDepth: BitDepth;
 } & (
 	| {
-			colorFormat: "RGB" | "GrayScaleAlpha" | "RGBA";
-			bitDepth: 8;
+			colorFormat: Exclude<ColorFormat, "Indexed">;
 	  }
-	| ({
-			bitDepth: 1 | 2 | 4 | 8;
-	  } & (
-			| {
-					colorFormat: "GrayScale";
-			  }
-			| {
-					colorFormat: "Indexed";
-					palette: Uint8Array;
-			  }
-	  ))
+	| {
+			colorFormat: "Indexed";
+			palette: Uint8Array;
+	  }
 );
 
 export const ticColorFormats = new TwoWayMap({
@@ -80,12 +73,14 @@ export const ticColorFormats = new TwoWayMap({
 	RGBA: 4
 });
 
+export type TicColorFormat = keyof typeof ticColorFormats.map;
+
 export type TicDictEntry = {
-	byteStart: number;
+	byteOffset: number;
 	width: number;
 	height: number;
-	colorFormat: keyof typeof ticColorFormats.map;
-	bitDepth: number;
+	colorFormat: TicColorFormat;
+	bitDepth: BitDepth;
 	nameLength: number;
 	name: string;
 };
