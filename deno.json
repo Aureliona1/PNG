@@ -1,4 +1,19 @@
 {
+  "test": {
+    "include": [
+      "test/"
+    ]
+  },
+  "lint": {
+    "include": [
+      "src/"
+    ],
+    "rules": {
+      "tags": [
+        "jsr"
+      ]
+    }
+  },
   "imports": {
     "@aurellis/helpers": "jsr:@aurellis/helpers@^1.2.1",
     "@deno-library/compress": "jsr:@deno-library/compress@^0.5.6",

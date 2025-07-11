@@ -17,7 +17,10 @@ export class PNGCache {
 	 * @param fileName The name of the TIC cache.
 	 */
 	constructor(public readonly fileName = "cache.tic") {
-		this.readFile();
+		try {
+			Deno.statSync(fileName);
+			this.readFile();
+		} catch (_) {}
 	}
 
 	/**

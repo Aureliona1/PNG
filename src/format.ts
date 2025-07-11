@@ -1,3 +1,4 @@
+import { mapRange } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 import { type BitDepth, colorFormatChannels, type DecodeResult } from "./types.ts";
 
@@ -216,15 +217,18 @@ export class PNGFormatterFrom {
  * Take an array of bytes and return the array with the bits packed to the desired bit depth.
  * @param bytes The input bytes.
  * @param desiredBitDepth The desired bit depth.
+ * @param normalise Whether to normalise the value to within the range supported by the desired bit depth. Don't use this for indexed pngs
  * @returns A new packed array, does not mutate the original array.
  */
-export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth): Uint8Array {
+export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth, normalise = true): Uint8Array {
 	if (desiredBitDepth < 8) {
 		const newRaw = new Uint8Array((bytes.length * desiredBitDepth) / 8);
 		const valuesPerByte = 8 / desiredBitDepth;
 		for (let i = 0; i < newRaw.length; i++) {
 			for (let j = 0; j < valuesPerByte; j++) {
-				newRaw[i] += (bytes[(i * 8) / desiredBitDepth + j] >> (8 - desiredBitDepth)) << (valuesPerByte - j - 1);
+				const value = bytes[i * valuesPerByte + j];
+				const normalisedValue = value >> (8 - desiredBitDepth);
+				newRaw[i] += (normalise ? normalisedValue : value) << (valuesPerByte - j - 1);
 			}
 		}
 		return newRaw;
@@ -236,14 +240,18 @@ export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth): Uint8Arr
  * Take an array of packed bits and return the unpacked bytes.
  * @param bits The bit-packed array.
  * @param currentBitDepth The current bit depth to unpack.
+ * @param normalise Whether to normalise the unpacked bits into a byte range. Do not do this for indexed pngs.
  */
-export function unpackBits(bits: Uint8Array, currentBitDepth: BitDepth): Uint8Array {
+export function unpackBits(bits: Uint8Array, currentBitDepth: BitDepth, normalise = true): Uint8Array {
 	if (currentBitDepth < 8) {
 		const newRaw = new Uint8Array((bits.length * 8) / currentBitDepth);
 		const maxOffset = 8 / currentBitDepth - 1;
 		const modulo = (1 << currentBitDepth) - 1;
 		for (let i = 0; i < newRaw.length; i++) {
-			newRaw[i] = (bits[Math.floor((i * 8) / currentBitDepth)] >> (maxOffset - (i & maxOffset))) & modulo;
+			newRaw[i] = (bits[Math.floor((i * currentBitDepth) / 8)] >> (maxOffset - (i & maxOffset))) & modulo;
+			if (normalise) {
+				newRaw[i] = mapRange(newRaw[i], [0, (1 << currentBitDepth) - 1], [0, 255]);
+			}
 		}
 		return newRaw;
 	}

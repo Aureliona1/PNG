@@ -1,7 +1,7 @@
 import { compare, concatUint8 } from "@aurellis/helpers";
 import { type BitDepth, type ColorFormat, colorFormatChannels, colorFormatNumbers, type DecodeResult } from "../types.ts";
 
-export async function decodePng(image: Uint8Array): Promise<DecodeResult> {
+export async function decode(image: Uint8Array): Promise<DecodeResult> {
 	const data = new DataView(image.buffer, image.byteOffset, image.byteLength);
 
 	const readChunk = (offset: number) => {
@@ -76,18 +76,60 @@ export async function decodePng(image: Uint8Array): Promise<DecodeResult> {
 		throw new Error(`Unexpected decompressed length. Expected ${expectedLength}, got ${decompressed.length}`);
 	}
 
-	// Strip filter bytes (must all be 0)
 	const raw = new Uint8Array(height * rowLength);
-	let outOffset = 0;
+	const prev = new Uint8Array(rowLength);
+	const curr = new Uint8Array(rowLength);
+	const bpp = Math.ceil((bitDepth * colorFormatChannels.get(colorFormat)) / 8);
+
 	let inOffset = 0;
+	let outOffset = 0;
+
+	function paethPredictor(a: number, b: number, c: number): number {
+		const p = a + b - c;
+		const pa = Math.abs(p - a);
+		const pb = Math.abs(p - b);
+		const pc = Math.abs(p - c);
+		if (pa <= pb && pa <= pc) return a;
+		if (pb <= pc) return b;
+		return c;
+	}
+
 	for (let y = 0; y < height; y++) {
 		const filter = decompressed[inOffset++];
-		if (filter !== 0) {
-			throw new Error(`Unsupported filter type ${filter} on row ${y}`);
-		}
-		raw.set(decompressed.subarray(inOffset, inOffset + rowLength), outOffset);
+		curr.set(decompressed.subarray(inOffset, inOffset + rowLength));
 		inOffset += rowLength;
+
+		for (let x = 0; x < rowLength; x++) {
+			const left = x >= bpp ? curr[x - bpp] : 0;
+			const up = prev[x] ?? 0;
+			const upLeft = x >= bpp ? prev[x - bpp] : 0;
+
+			switch (filter) {
+				case 0: // None
+					// already set
+					break;
+				case 1: // Sub
+					curr[x] = (curr[x] + left) & 0xff;
+					break;
+				case 2: // Up
+					curr[x] = (curr[x] + up) & 0xff;
+					break;
+				case 3: // Average
+					curr[x] = (curr[x] + Math.floor((left + up) / 2)) & 0xff;
+					break;
+				case 4: // Paeth
+					curr[x] = (curr[x] + paethPredictor(left, up, upLeft)) & 0xff;
+					break;
+				default:
+					throw new Error(`Unknown filter type: ${filter}`);
+			}
+		}
+
+		raw.set(curr, outOffset);
 		outOffset += rowLength;
+
+		// Prepare prev row for next iteration
+		prev.set(curr);
 	}
 
 	if (colorFormat === "Indexed") {

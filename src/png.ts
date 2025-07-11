@@ -1,6 +1,6 @@
-import { ArrOp, clamp, clog, type Vec2 } from "@aurellis/helpers";
+import { ArrOp, clamp, clog, ensureFile, type Vec2 } from "@aurellis/helpers";
 import { PNGCache } from "./binary/cache.ts";
-import { decodePng } from "./binary/decode.ts";
+import { decode } from "./binary/decode.ts";
 import { encode } from "./binary/encode.ts";
 import { PNGDraw } from "./draw.ts";
 import { PNGFilter } from "./filters.ts";
@@ -22,24 +22,19 @@ export class PNG {
 			return new PNG();
 		}
 
-		const dec = await decodePng(bin);
-		const out = new PNG(dec.raw, dec.width, dec.height);
-
-		// Unpack bits
-		out.raw = unpackBits(out.raw, dec.bitDepth);
-
-		// Format to RGBA
+		const dec = await decode(bin);
+		dec.raw = unpackBits(dec.raw, dec.bitDepth, dec.colorFormat !== "Indexed");
 		const formatter = new PNGFormatterFrom(dec);
 		if (formatter.isCorrectFormat()) {
 			if (dec.colorFormat !== "RGBA") {
-				out.raw = formatter[`from${dec.colorFormat}`]();
+				dec.raw = formatter[`from${dec.colorFormat}`]();
 			}
 		} else {
 			clog(`Image ${path} does not contain a supported format, image will be blank...`, "Error", "PNG");
 			return new PNG();
 		}
 
-		return out;
+		return new PNG(dec.raw, dec.width, dec.height);
 	}
 
 	/**
@@ -58,9 +53,10 @@ export class PNG {
 	 *
 	 * {@link PNG.cache.write} is the same as {@link this.writeCache}.
 	 */
-	static get cache() {
-		return new PNGCache();
+	static get cache(): PNGCache {
+		return PNG._cache;
 	}
+	private static _cache = new PNGCache();
 
 	/**
 	 * Utility class for adding filters to the image.
@@ -160,6 +156,7 @@ export class PNG {
 	}
 
 	private paletteBitDepth(len: number): BitDepth {
+		len /= 3;
 		if (len <= 2) {
 			return 1;
 		}
@@ -235,7 +232,7 @@ export class PNG {
 		}
 
 		// Pack bits if needed.
-		outRaw = packBits(outRaw, bitDepth);
+		outRaw = packBits(outRaw, bitDepth, colorFormat !== "Indexed");
 
 		let bin: Uint8Array;
 		if (colorFormat == "Indexed") {
@@ -244,6 +241,7 @@ export class PNG {
 			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });
 		}
 
+		ensureFile(path);
 		await Deno.writeFile(path, bin);
 
 		return this;
