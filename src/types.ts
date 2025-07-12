@@ -36,6 +36,7 @@ export type DecodeResult = {
 	width: number;
 	height: number;
 	bitDepth: BitDepth;
+	gamma?: number;
 } & (
 	| {
 			colorFormat: "GrayScale" | "RGB";

@@ -25,6 +25,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 		colorFormat: ColorFormat = "RGBA";
 	let palette: Uint8Array | undefined;
 	let trns: Uint8Array | undefined;
+	let gamma: number | undefined;
 	const idatChunks: Uint8Array[] = [];
 
 	while (offset < image.length) {
@@ -49,6 +50,10 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 			trns = chunkData;
 		} else if (type === "IDAT") {
 			idatChunks.push(chunkData);
+		} else if (type === "gAMA") {
+			// gAMA chunk data is 4 bytes big endian unsigned int
+			gamma = (chunkData[0] << 24) | (chunkData[1] << 16) | (chunkData[2] << 8) | chunkData[3];
+			gamma = gamma / 100000; // normalize to float gamma
 		} else if (type === "IEND") {
 			break;
 		}
@@ -96,29 +101,31 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 
 	for (let y = 0; y < height; y++) {
 		const filter = decompressed[inOffset++];
-		curr.set(decompressed.subarray(inOffset, inOffset + rowLength));
+		const scanline = decompressed.subarray(inOffset, inOffset + rowLength);
+
 		inOffset += rowLength;
 
 		for (let x = 0; x < rowLength; x++) {
+			const rawByte = scanline[x];
 			const left = x >= bpp ? curr[x - bpp] : 0;
 			const up = prev[x] ?? 0;
 			const upLeft = x >= bpp ? prev[x - bpp] : 0;
 
 			switch (filter) {
 				case 0: // None
-					// already set
+					curr[x] = rawByte;
 					break;
 				case 1: // Sub
-					curr[x] = (curr[x] + left) & 0xff;
+					curr[x] = (rawByte + left) & 0xff;
 					break;
 				case 2: // Up
-					curr[x] = (curr[x] + up) & 0xff;
+					curr[x] = (rawByte + up) & 0xff;
 					break;
 				case 3: // Average
-					curr[x] = (curr[x] + Math.floor((left + up) / 2)) & 0xff;
+					curr[x] = (rawByte + Math.floor((left + up) / 2)) & 0xff;
 					break;
 				case 4: // Paeth
-					curr[x] = (curr[x] + paethPredictor(left, up, upLeft)) & 0xff;
+					curr[x] = (rawByte + paethPredictor(left, up, upLeft)) & 0xff;
 					break;
 				default:
 					throw new Error(`Unknown filter type: ${filter}`);
@@ -140,7 +147,8 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 			height,
 			colorFormat,
 			bitDepth,
-			trns
+			trns,
+			gamma
 		};
 	}
 
@@ -150,6 +158,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 		height,
 		colorFormat,
 		bitDepth,
-		trns
+		trns,
+		gamma
 	};
 }

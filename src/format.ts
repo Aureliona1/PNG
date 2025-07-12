@@ -1,4 +1,4 @@
-import { mapRange } from "@aurellis/helpers";
+import { clamp, mapRange } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 import { type BitDepth, colorFormatChannels, type DecodeResult } from "./types.ts";
 
@@ -31,7 +31,7 @@ export class PNGFormatterTo {
 	toGrayScale(): Uint8Array {
 		const newRaw = new Uint8Array(this.src.raw.length / 4);
 		for (let i = 0; i < newRaw.length; i++) {
-			newRaw[i] = this.src.raw[Math.floor(i / 4)];
+			newRaw[i] = this.src.raw[i * 4];
 		}
 		return newRaw;
 	}
@@ -228,7 +228,7 @@ export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth, normalise
 			for (let j = 0; j < valuesPerByte; j++) {
 				const value = bytes[i * valuesPerByte + j];
 				const normalisedValue = value >> (8 - desiredBitDepth);
-				newRaw[i] += (normalise ? normalisedValue : value) << (valuesPerByte - j - 1);
+				newRaw[i] |= (normalise ? normalisedValue : value) << ((valuesPerByte - j - 1) * desiredBitDepth);
 			}
 		}
 		return newRaw;
@@ -256,4 +256,17 @@ export function unpackBits(bits: Uint8Array, currentBitDepth: BitDepth, normalis
 		return newRaw;
 	}
 	return bits;
+}
+
+/**
+ * Gamma correct an array of pixels. Mutates the array in place.
+ */
+export function gammaCorrect(pixels: Uint8Array, gamma: number) {
+	const invGamma = 1 / gamma;
+	const length = pixels.length;
+	for (let i = 0; i < length; i++) {
+		let normalized = pixels[i] / 255;
+		let corrected = Math.pow(normalized, invGamma);
+		pixels[i] = clamp(Math.round(corrected * 255), [0, 255]);
+	}
 }

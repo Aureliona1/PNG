@@ -4,8 +4,8 @@ import { decode } from "./binary/decode.ts";
 import { encode } from "./binary/encode.ts";
 import { PNGDraw } from "./draw.ts";
 import { PNGFilter } from "./filters.ts";
+import { gammaCorrect, packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "./format.ts";
 import type { BitDepth, ColorFormat } from "./types.ts";
-import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "./format.ts";
 
 export class PNG {
 	/**
@@ -32,6 +32,11 @@ export class PNG {
 		} else {
 			clog(`Image ${path} does not contain a supported format, image will be blank...`, "Error", "PNG");
 			return new PNG();
+		}
+
+		// Gamma correction
+		if (dec.gamma && dec.gamma !== 0) {
+			gammaCorrect(dec.raw, dec.gamma);
 		}
 
 		return new PNG(dec.raw, dec.width, dec.height);
@@ -230,6 +235,14 @@ export class PNG {
 				outRaw = formatter[`to${colorFormat!}`]();
 			}
 		}
+
+		// for (let j = 0; j < this.height; j++) {
+		// 	console.log(
+		// 		Array.from(outRaw.subarray(j * this.width, (j + 1) * this.width))
+		// 			.map(x => rgb(x, x, x, true) + x.toString().padEnd(3) + "\x1b[0m")
+		// 			.join("")
+		// 	);
+		// }
 
 		// Pack bits if needed.
 		outRaw = packBits(outRaw, bitDepth, colorFormat !== "Indexed");
