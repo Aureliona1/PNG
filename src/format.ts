@@ -245,10 +245,10 @@ export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth, normalise
 export function unpackBits(bits: Uint8Array, currentBitDepth: BitDepth, normalise = true): Uint8Array {
 	if (currentBitDepth < 8) {
 		const newRaw = new Uint8Array((bits.length * 8) / currentBitDepth);
-		const maxOffset = 8 / currentBitDepth - 1;
+		const maxOffset = 8 - currentBitDepth;
 		const modulo = (1 << currentBitDepth) - 1;
 		for (let i = 0; i < newRaw.length; i++) {
-			newRaw[i] = (bits[Math.floor((i * currentBitDepth) / 8)] >> (maxOffset - (i & maxOffset))) & modulo;
+			newRaw[i] = (bits[Math.floor((i * currentBitDepth) / 8)] >> (maxOffset - ((i * currentBitDepth) & maxOffset))) & modulo;
 			if (normalise) {
 				newRaw[i] = mapRange(newRaw[i], [0, (1 << currentBitDepth) - 1], [0, 255]);
 			}

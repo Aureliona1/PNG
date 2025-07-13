@@ -236,14 +236,6 @@ export class PNG {
 			}
 		}
 
-		// for (let j = 0; j < this.height; j++) {
-		// 	console.log(
-		// 		Array.from(outRaw.subarray(j * this.width, (j + 1) * this.width))
-		// 			.map(x => rgb(x, x, x, true) + x.toString().padEnd(3) + "\x1b[0m")
-		// 			.join("")
-		// 	);
-		// }
-
 		// Pack bits if needed.
 		outRaw = packBits(outRaw, bitDepth, colorFormat !== "Indexed");
 

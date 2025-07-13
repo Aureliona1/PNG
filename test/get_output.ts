@@ -1,7 +1,5 @@
+import { clog, ensureDir } from "@aurellis/helpers";
 import { PNG } from "@aurellis/png";
-import { decode } from "../src/binary/decode.ts";
-import { Cache, clog, ensureDir, rgb } from "@aurellis/helpers";
-import { arrayBuffer } from "node:stream/consumers";
 
 function downloadSamples() {
 	ensureDir("input");
@@ -43,7 +41,7 @@ function downloadSamples() {
 }
 
 const dir = Array.from(Deno.readDirSync("input"));
-for (let i = 3; i < 4; i++) {
+for (let i = 0; i < dir.length; i++) {
 	const inName = "input/" + dir[i].name;
 	const outName = "output/" + dir[i].name;
 	clog(`Working on ${dir[i].name}...`);
