@@ -1,4 +1,4 @@
-import { clog, ensureDir } from "@aurellis/helpers";
+import { Cache, clog, ensureDir } from "@aurellis/helpers";
 import { PNG } from "@aurellis/png";
 
 function downloadSamples() {
@@ -46,5 +46,8 @@ for (let i = 0; i < dir.length; i++) {
 	const outName = "output/" + dir[i].name;
 	clog(`Working on ${dir[i].name}...`);
 	const im = await PNG.fromFile(inName);
-	await im.writeFile(outName);
+	const cache = new Cache(outName + ".json");
+	cache.write("width", im.width);
+	cache.write("height", im.height);
+	cache.write("RGBA", Array.from(im.raw));
 }
