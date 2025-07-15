@@ -4,8 +4,8 @@ import { type BitDepth, colorFormatChannels, type DecodeResult } from "./types.t
 
 export class PNGFormatterTo {
 	// Helper functions to convert a 24-bit color to a number
-	private static c2n = (color: Uint8Array) => (color[0] << 16) + (color[1] << 8) + color[2];
-	private static n2c = (n: number) => new Uint8Array([(n & (0xff << 16)) >> 16, (n & (0xff << 8)) >> 8, n & 0xff]);
+	static c2n = (color: Uint8Array) => (color[0] << 16) + (color[1] << 8) + color[2];
+	static n2c = (n: number) => new Uint8Array([(n & (0xff << 16)) >> 16, (n & (0xff << 8)) >> 8, n & 0xff]);
 	private _indexedPalette: Map<number, number> = new Map();
 	/**
 	 * A utility class that converts pixel arrays from RGBA to any supported format.
@@ -60,7 +60,8 @@ export class PNGFormatterTo {
 		return newRaw;
 	}
 	/**
-	 * Check if the image can be represented by indexed color. This is rather slow as it has to manually perform color indexing.
+	 * Check if the image can be represented by indexed color.
+	 * This is rather slow as it has to manually perform color indexing.
 	 */
 	canBeIndexed(): boolean {
 		// No point trying if we have alpha
@@ -87,6 +88,7 @@ export class PNGFormatterTo {
 	 * Transform the pixel array into indexed color.
 	 * This does not mutate the old pixel array.
 	 * This will check that the image is eligible to be indexed, and will return two empty Uint8Arrays if the image is not.
+	 * @returns [palette (RGB), raw]
 	 */
 	toIndexed(): [Uint8Array, Uint8Array] {
 		if (!this._indexedPalette.size) {
@@ -108,14 +110,11 @@ export class PNGFormatterTo {
 	 * Check if the image can be represented as grayscale with alpha.
 	 */
 	canBeGrayScaleAlpha(): boolean {
-		if (this.canBeGrayScale()) {
-			let consistentAlpha = true;
-			for (let i = 3; i < this.src.raw.length && consistentAlpha; i += 4) {
-				consistentAlpha = this.src.raw[i] === 255;
-			}
-			return !consistentAlpha;
+		let valid = true;
+		for (let i = 0; i < this.src.raw.length && valid; i += 4) {
+			valid = this.src.raw[i] === this.src.raw[i + 1] && this.src.raw[i] === this.src.raw[i + 2];
 		}
-		return false;
+		return valid;
 	}
 	/**
 	 * Transform the pixel array into grayscale with alpha.
@@ -124,8 +123,8 @@ export class PNGFormatterTo {
 	toGrayScaleAlpha(): Uint8Array {
 		const newRaw = new Uint8Array(this.src.raw.length / 2);
 		for (let i = 0; i < newRaw.length; i += 2) {
-			newRaw[i] = this.src.raw[i * 4];
-			newRaw[i + 1] = this.src.raw[i * 4 + 3];
+			newRaw[i] = this.src.raw[i * 2];
+			newRaw[i + 1] = this.src.raw[i * 2 + 3];
 		}
 		return newRaw;
 	}
