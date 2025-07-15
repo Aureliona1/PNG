@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { PNGFormatterFrom, PNGFormatterTo } from "../src/format.ts";
+import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "../src/format.ts";
 import { PNG } from "../src/png.ts";
 import { clog, compare, randArray, random } from "@aurellis/helpers";
 import { DecodeResult } from "../src/types.ts";
@@ -283,5 +283,82 @@ Deno.test({
 		};
 		const transformed = new PNGFormatterFrom(dec).fromGrayScaleAlpha();
 		assert(compare(transformed, new Uint8Array([1, 1, 1, 2, 3, 3, 3, 4, 5, 5, 5, 6, 7, 7, 7, 8])));
+	}
+});
+
+// Bit manipulation
+
+Deno.test({
+	name: "Pack to 1 bit",
+	fn: () => {
+		const raw = new Uint8Array([1, 0, 1, 0, 0, 1, 0, 1]);
+		// Alrady normalised
+		let packed = packBits(raw, 1, false);
+		assert(compare(packed, new Uint8Array([165])));
+		// With normalisation
+		const denorm = raw.map(x => x << 7);
+		packed = packBits(denorm, 1);
+		assert(compare(packed, new Uint8Array([165])));
+	}
+});
+
+Deno.test({
+	name: "Pack to 2 bits",
+	fn: () => {
+		const raw = new Uint8Array([0, 1, 2, 3, 3, 2, 1, 0]);
+		// Alrady normalised
+		let packed = packBits(raw, 2, false);
+		assert(compare(packed, new Uint8Array([27, 228])));
+		// With normalisation
+		const denorm = raw.map(x => x << 6);
+		packed = packBits(denorm, 2);
+		assert(compare(packed, new Uint8Array([27, 228])));
+	}
+});
+
+Deno.test({
+	name: "Pack to 4 bits",
+	fn: () => {
+		const raw = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7]);
+		// Alrady normalised
+		let packed = packBits(raw, 4, false);
+		assert(compare(packed, new Uint8Array([1, 35, 69, 103])));
+		// With normalisation
+		const denorm = raw.map(x => x << 4);
+		packed = packBits(denorm, 4);
+		assert(compare(packed, new Uint8Array([1, 35, 69, 103])));
+	}
+});
+
+Deno.test({
+	name: "Unpack 1 bit",
+	fn: () => {
+		const raw = new Uint8Array([165]);
+		const unpacked = unpackBits(raw, 1, false);
+		const normalised = unpackBits(raw, 1);
+		assert(compare(unpacked, new Uint8Array([1, 0, 1, 0, 0, 1, 0, 1])));
+		assert(compare(normalised, new Uint8Array([255, 0, 255, 0, 0, 255, 0, 255])));
+	}
+});
+
+Deno.test({
+	name: "Unpack 2 bits",
+	fn: () => {
+		const raw = new Uint8Array([165]);
+		const unpacked = unpackBits(raw, 2, false);
+		const normalised = unpackBits(raw, 2);
+		assert(compare(unpacked, new Uint8Array([2, 2, 1, 1])));
+		assert(compare(normalised, new Uint8Array([170, 170, 85, 85])));
+	}
+});
+
+Deno.test({
+	name: "Unpack 4 bits",
+	fn: () => {
+		const raw = new Uint8Array([165]);
+		const unpacked = unpackBits(raw, 4, false);
+		const normalised = unpackBits(raw, 4);
+		assert(compare(unpacked, new Uint8Array([10, 5])));
+		assert(compare(normalised, new Uint8Array([170, 85])));
 	}
 });

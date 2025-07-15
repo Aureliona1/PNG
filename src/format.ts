@@ -227,7 +227,7 @@ export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth, normalise
 			for (let j = 0; j < valuesPerByte; j++) {
 				const value = bytes[i * valuesPerByte + j];
 				const normalisedValue = value >> (8 - desiredBitDepth);
-				newRaw[i] |= (normalise ? normalisedValue : value) << ((valuesPerByte - j - 1) * desiredBitDepth);
+				newRaw[i] |= ((normalise ? normalisedValue : value) & ((1 << desiredBitDepth) - 1)) << ((valuesPerByte - j - 1) * desiredBitDepth);
 			}
 		}
 		return newRaw;
