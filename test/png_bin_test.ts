@@ -1,8 +1,7 @@
 import { Cache, compare } from "@aurellis/helpers";
-import { decode } from "../src/binary/decode.ts";
-import { assert } from "@std/assert";
 import { PNG } from "../src/png.ts";
 import { BitDepth, ColorFormat } from "../src/types.ts";
+import { assert } from "../src/vendor/assert.ts";
 
 function generateDecodeTest(imageName: string) {
 	imageName = /.*\.png$/.test(imageName) ? imageName : imageName + ".png";

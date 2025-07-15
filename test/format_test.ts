@@ -1,8 +1,8 @@
-import { assert } from "@std/assert";
+import { compare, random } from "@aurellis/helpers";
 import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "../src/format.ts";
 import { PNG } from "../src/png.ts";
-import { clog, compare, randArray, random } from "@aurellis/helpers";
 import { DecodeResult } from "../src/types.ts";
+import { assert } from "../src/vendor/assert.ts";
 
 // Validators
 
