@@ -1,7 +1,7 @@
 import { clog } from "@aurellis/helpers";
-import type { PNG } from "../png.ts";
-import type { BitDepth } from "../types.ts";
-import { TIC } from "./tic.ts";
+import type { PNG } from "./png.ts";
+import type { BitDepth, DecodeResult } from "./types.ts";
+import { TIC } from "./binary/tic.ts";
 
 export class PNGCache {
 	private readFile() {
@@ -11,7 +11,7 @@ export class PNGCache {
 			clog("Error reading TIC cache file, check your read permissions...", "Error", "Cache");
 		}
 	}
-	private tic: TIC = new TIC();
+	private tic!: TIC;
 	/**
 	 * Abstract wrapper for TIC cache files.
 	 * @param fileName The name of the TIC cache.
@@ -20,7 +20,9 @@ export class PNGCache {
 		try {
 			Deno.statSync(fileName);
 			this.readFile();
-		} catch (_) {}
+		} catch (_) {
+			this.tic = new TIC();
+		}
 	}
 
 	/**
@@ -28,7 +30,7 @@ export class PNGCache {
 	 * @param entryName The name of the entry in the cache.
 	 * @returns The specified entry, or a blank PNG if the name is invalid.
 	 */
-	read(entryName = ""): PNG {
+	read(entryName = ""): DecodeResult {
 		this.readFile();
 		return this.tic.readEntry(entryName);
 	}

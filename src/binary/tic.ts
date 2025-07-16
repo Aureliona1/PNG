@@ -1,7 +1,7 @@
 import { clog, concatUint8 } from "@aurellis/helpers";
-import { PNG } from "../png.ts";
-import { type BitDepth, type DecodeResult, type TicColorFormat, ticColorFormats, type TicDictEntry } from "../types.ts";
-import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "../format.ts";
+import { PNGFormatterTo, packBits } from "../format.ts";
+import type { PNG } from "../png.ts";
+import { ticColorFormats, type BitDepth, type DecodeResult, type TicColorFormat, type TicDictEntry } from "../types.ts";
 
 /*
 Terrible Image Cache
@@ -45,7 +45,7 @@ export class TIC {
 	/**
 	 * Get the length of an entry in the datachunk.
 	 */
-	private static dataLength(entry: TicDictEntry) {
+	private static entryDataLength(entry: TicDictEntry) {
 		return Math.ceil((entry.width * entry.height * (ticColorFormats.get(entry.colorFormat) + 1) * entry.bitDepth) / 8);
 	}
 
@@ -56,23 +56,27 @@ export class TIC {
 	 */
 	static from(raw: Uint8Array): TIC {
 		const view = new DataView(raw.buffer);
-		const dictLength = view.getUint32(0) ?? 0;
+		const dictLength = raw.length ? view.getUint32(0) : 0;
 		const output = new TIC(dictLength, new Map(), raw.subarray(dictLength + 4));
 
-		for (let cursor = 4; cursor < dictLength + 4; ) {
-			const thisEntry: Partial<TicDictEntry> = {};
-			thisEntry.byteOffset = view.getUint32(cursor);
-			cursor += 4;
-			thisEntry.width = view.getUint32(cursor);
-			cursor += 4;
-			thisEntry.height = view.getUint32(cursor);
-			cursor += 4;
-			thisEntry.colorFormat = ticColorFormats.revGet(((view.getUint8(cursor) >> 6) + 1) as 1 | 2 | 3 | 4);
-			thisEntry.bitDepth = (1 << ((view.getUint8(cursor++) >> 4) & 3)) as BitDepth;
-			thisEntry.nameLength = view.getUint8(cursor++);
-			thisEntry.name = new TextDecoder().decode(raw.subarray(cursor, cursor + thisEntry.nameLength));
-			cursor += thisEntry.nameLength;
-			output.dict.set(thisEntry.name, thisEntry as TicDictEntry);
+		try {
+			for (let cursor = 4; cursor < dictLength + 4; ) {
+				const thisEntry: Partial<TicDictEntry> = {};
+				thisEntry.byteOffset = view.getUint32(cursor);
+				cursor += 4;
+				thisEntry.width = view.getUint32(cursor);
+				cursor += 4;
+				thisEntry.height = view.getUint32(cursor);
+				cursor += 4;
+				thisEntry.colorFormat = ticColorFormats.revGet(((view.getUint8(cursor) >> 6) + 1) as 1 | 2 | 3 | 4);
+				thisEntry.bitDepth = (1 << ((view.getUint8(cursor++) >> 4) & 3)) as BitDepth;
+				thisEntry.nameLength = view.getUint8(cursor++);
+				thisEntry.name = new TextDecoder().decode(raw.subarray(cursor, cursor + thisEntry.nameLength));
+				cursor += thisEntry.nameLength;
+				output.dict.set(thisEntry.name, thisEntry as TicDictEntry);
+			}
+		} catch (_) {
+			clog("Input TIC file either has an invalid dict length, or is missing bytes, resulting TIC may be corrupted...", "Error", "TIC");
 		}
 		return output;
 	}
@@ -92,7 +96,7 @@ export class TIC {
 	 * - Byte offset values are within the limits of the datachunk
 	 * - Image data doesn't extend the length of the datachunk
 	 */
-	validate() {
+	validate(alreadyValidated = false) {
 		let dictLength = 0;
 		// [name, size in dict, size in datachunk]
 		const invalidEntries: string[] = [];
@@ -112,7 +116,7 @@ export class TIC {
 			}
 			dictLength += entry.nameLength;
 
-			const dataLength = TIC.dataLength(entry);
+			const dataLength = TIC.entryDataLength(entry);
 			if (entry.byteOffset >= this.dataChunk.length) {
 				clog(`Cached image ${entry.name} has an invalid byte offset, it will be removed form the cache...`, "Warning", "TIC");
 				valid = false;
@@ -129,7 +133,9 @@ export class TIC {
 			invalidEntries.forEach(e => {
 				this.removeEntry(e);
 			});
-			this.validate();
+			if (!alreadyValidated) {
+				this.validate(true);
+			}
 		}
 	}
 	/**
@@ -141,7 +147,7 @@ export class TIC {
 			const entry = this.dict.get(entryName)!;
 			const nameLength = new TextEncoder().encode(entry.name).length;
 			this.dictLength -= 14 + nameLength;
-			const dataLength = TIC.dataLength(entry);
+			const dataLength = TIC.entryDataLength(entry);
 			this.dataChunk = concatUint8([this.dataChunk.subarray(0, entry.byteOffset), this.dataChunk.subarray(entry.byteOffset + dataLength)]);
 			this.dict.forEach(e => {
 				if (e.byteOffset > entry.byteOffset) {
@@ -192,29 +198,23 @@ export class TIC {
 	}
 
 	/**
-	 * Read and decode a TIC entry into a PNG.
+	 * Read and decode a TIC entry.
 	 * @param entryName The name of the entry in the TIC.
-	 * @returns The specified entry, or a blank PNG if the name is invalid.
 	 */
-	readEntry(entryName = ""): PNG {
+	readEntry(entryName = ""): DecodeResult {
 		if (!this.dict.has(entryName)) {
-			return new PNG();
+			return { raw: new Uint8Array(), width: 0, height: 0, colorFormat: "RGBA", bitDepth: 8 };
 		}
 		const entry = this.dict.get(entryName)!;
 		const dec: DecodeResult = {
-			raw: this.dataChunk.subarray(entry.byteOffset, entry.byteOffset + TIC.dataLength(entry)),
+			raw: this.dataChunk.subarray(entry.byteOffset, entry.byteOffset + TIC.entryDataLength(entry)),
 			width: entry.width,
 			height: entry.height,
 			colorFormat: entry.colorFormat,
 			bitDepth: entry.bitDepth
 		};
-		dec.raw = unpackBits(dec.raw, dec.bitDepth);
-		const formatter = new PNGFormatterFrom(dec);
-		if (formatter.isCorrectFormat() && dec.colorFormat !== "RGBA") {
-			dec.raw = formatter[`from${dec.colorFormat}`]();
-		}
 
-		return new PNG(dec.raw, dec.width, dec.height);
+		return dec;
 	}
 
 	/**

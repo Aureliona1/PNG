@@ -1,11 +1,11 @@
 import { ArrOp, clamp, clog, ensureFile, type Vec2 } from "@aurellis/helpers";
-import { PNGCache } from "./binary/cache.ts";
+import { PNGCache } from "./cache.ts";
 import { decode } from "./binary/decode.ts";
 import { encode } from "./binary/encode.ts";
 import { PNGDraw } from "./draw.ts";
 import { PNGFilter } from "./filters.ts";
 import { gammaCorrect, packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "./format.ts";
-import type { BitDepth, ColorFormat } from "./types.ts";
+import type { BitDepth, ColorFormat, DecodeResult } from "./types.ts";
 
 export class PNG {
 	/**
@@ -23,6 +23,20 @@ export class PNG {
 		}
 
 		const dec = await decode(bin);
+		return PNG.fromDecode(dec, path);
+	}
+
+	/**
+	 * Construct a PNG from the cache.
+	 * @param entryName The name of the image in the cache.
+	 * @returns The cached image, or a blank image if the image isn't in the cache.
+	 */
+	static fromCache(entryName: string): PNG {
+		const dec = PNG.cache.read(entryName);
+		return this.fromDecode(dec, entryName);
+	}
+
+	private static fromDecode(dec: DecodeResult, imageName: string): PNG {
 		dec.raw = unpackBits(dec.raw, dec.bitDepth, dec.colorFormat !== "Indexed");
 		const formatter = new PNGFormatterFrom(dec);
 		if (formatter.isCorrectFormat()) {
@@ -30,7 +44,7 @@ export class PNG {
 				dec.raw = formatter[`from${dec.colorFormat}`]();
 			}
 		} else {
-			clog(`Image ${path} does not contain a supported format, image will be blank...`, "Error", "PNG");
+			clog(`Image ${imageName} does not contain a supported format, image will be blank...`, "Error", "PNG");
 			return new PNG();
 		}
 
@@ -40,15 +54,6 @@ export class PNG {
 		}
 
 		return new PNG(dec.raw, dec.width, dec.height);
-	}
-
-	/**
-	 * Construct a PNG from the cache. This is the same as {@link PNG.cache.read}.
-	 * @param entryName The name of the image in the cache.
-	 * @returns The cached image, or a blank image if the image isn't in the cache.
-	 */
-	static fromCache(entryName: string) {
-		return PNG.cache.read(entryName);
 	}
 
 	/**
