@@ -46,7 +46,7 @@ export class TIC {
 	 * Get the length of an entry in the datachunk.
 	 */
 	private static entryDataLength(entry: TicDictEntry) {
-		return Math.ceil((entry.width * entry.height * (ticColorFormats.get(entry.colorFormat) + 1) * entry.bitDepth) / 8);
+		return Math.ceil((entry.width * entry.height * ticColorFormats.get(entry.colorFormat) * entry.bitDepth) / 8);
 	}
 
 	/**
@@ -185,7 +185,7 @@ export class TIC {
 			colorFormat = "RGBA";
 		}
 		encodedRaw = packBits(encodedRaw, bitDepth);
-		this.dict.set(entryName, {
+		const thisEntry: TicDictEntry = {
 			byteOffset: this.dataChunk.length,
 			width: im.width,
 			height: im.height,
@@ -193,7 +193,9 @@ export class TIC {
 			bitDepth: bitDepth,
 			nameLength: new TextEncoder().encode(entryName).length,
 			name: entryName
-		});
+		};
+		this.dictLength += 14 + thisEntry.nameLength;
+		this.dict.set(entryName, thisEntry);
 		this.dataChunk = concatUint8([this.dataChunk, encodedRaw]);
 	}
 
