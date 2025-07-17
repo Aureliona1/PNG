@@ -5,10 +5,12 @@ import { TIC } from "./binary/tic.ts";
 
 export class PNGCache {
 	private readFile() {
-		try {
-			this.tic = TIC.from(Deno.readFileSync(this.fileName));
-		} catch (_) {
-			clog("Error reading TIC cache file, check your read permissions...", "Error", "Cache");
+		if (pathCanBeAccessed(this.fileName)) {
+			try {
+				this.tic = TIC.from(Deno.readFileSync(this.fileName));
+			} catch (_) {
+				clog("Error reading TIC cache file, check your read permissions...", "Error", "Cache");
+			}
 		}
 	}
 	private tic!: TIC;
