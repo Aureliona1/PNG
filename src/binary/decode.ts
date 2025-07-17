@@ -1,6 +1,10 @@
 import { compare, concatUint8 } from "@aurellis/helpers";
-import { type BitDepth, type ColorFormat, colorFormatChannels, colorFormatNumbers, type DecodeResult } from "../types.ts";
+import { type BitDepth, type ColorFormat, formatChannelCounts, pngColorFormats, type DecodeResult } from "../types.ts";
 
+/**
+ * Decode a PNG binary into a decode result.
+ * @param image The raw image binary.
+ */
 export async function decode(image: Uint8Array): Promise<DecodeResult> {
 	const data = new DataView(image.buffer, image.byteOffset, image.byteLength);
 
@@ -35,7 +39,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 			width = data.getUint32(offset + 8);
 			height = data.getUint32(offset + 12);
 			bitDepth = image[offset + 16] as BitDepth;
-			colorFormat = colorFormatNumbers.revGet(image[offset + 17] as keyof typeof colorFormatNumbers.reverseMap);
+			colorFormat = pngColorFormats.revGet(image[offset + 17] as keyof typeof pngColorFormats.reverseMap);
 
 			const compression = image[offset + 18];
 			const filterMethod = image[offset + 19];
@@ -72,7 +76,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 	const decompressedBuffer = await new Response(stream.readable).arrayBuffer();
 	const decompressed = new Uint8Array(decompressedBuffer);
 
-	const bitsPerPixel = bitDepth * colorFormatChannels.get(colorFormat);
+	const bitsPerPixel = bitDepth * formatChannelCounts.get(colorFormat);
 	const bitsPerRow = bitsPerPixel * width;
 	const rowLength = Math.ceil(bitsPerRow / 8);
 
@@ -84,7 +88,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 	const raw = new Uint8Array(height * rowLength);
 	const prev = new Uint8Array(rowLength);
 	const curr = new Uint8Array(rowLength);
-	const bpp = Math.ceil((bitDepth * colorFormatChannels.get(colorFormat)) / 8);
+	const bpp = Math.ceil((bitDepth * formatChannelCounts.get(colorFormat)) / 8);
 
 	let inOffset = 0;
 	let outOffset = 0;

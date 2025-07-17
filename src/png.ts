@@ -84,11 +84,9 @@ export class PNG {
 
 	/**
 	 * A class that handles many operations regarding PNG files.
-	 * @param raw The raw pixel values, of the PNG.
-	 * @param width The width of the PNG.
-	 * @param height The height of the PNG.
-	 * @param _colorFormat The color format of the PNG.
-	 * @param _bitDepth The bit depth of the pixel values.
+	 * @param raw The raw pixel values, of the PNG. (Optional)
+	 * @param width The width of the PNG. (Default - 100)
+	 * @param height The height of the PNG. (Default - 100)
 	 */
 	constructor(public raw: Uint8Array = new Uint8Array(), public width = 100, public height = 100) {
 		if (!raw.length) {
@@ -106,6 +104,7 @@ export class PNG {
 		const index = (clamp(y, [0, this.height]) * this.width + clamp(x, [0, this.width])) * 4;
 		return this.raw.subarray(index, index + 4);
 	}
+
 	/**
 	 * Set the value of a pixel on the image.
 	 * @param x The col (from the left) of the pixel.
@@ -119,6 +118,7 @@ export class PNG {
 		}
 		return this;
 	}
+
 	/**
 	 * Scale the image either larger or smaller than the current resolution.
 	 * @param type Whether to scale as a factor (0-1) of the original image dimensions. Or by absolute pixels.
@@ -147,6 +147,7 @@ export class PNG {
 		this.raw = output;
 		return this;
 	}
+
 	/**
 	 * Runs a function on all image values.
 	 * @param affectAlpha Whether or not to affect alpha values.

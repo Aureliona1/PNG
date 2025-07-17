@@ -1,9 +1,6 @@
 import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, type Easing, lerp, type Vec2, type Vec4 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 
-/**
- * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
- */
 export class PNGFilter {
 	private i2c(i: number): Vec2 {
 		return [Math.floor(Math.floor(i / 4) / this.src.width), Math.floor(i / 4) % this.src.width];
@@ -39,6 +36,9 @@ export class PNGFilter {
 		}
 		return n;
 	}
+	/**
+	 * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
+	 */
 	constructor(private src: PNG) {}
 	/**
 	 * Over or under expose the image.

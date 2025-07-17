@@ -1,7 +1,7 @@
 import { concatUint8 } from "@aurellis/helpers";
 import { deflate } from "@deno-library/compress";
 import { crc32 } from "@deno-library/crc32";
-import { type ColorFormat, colorFormatChannels, colorFormatNumbers, type EncodeOpts } from "../types.ts";
+import { type ColorFormat, formatChannelCounts, pngColorFormats, type EncodeOpts } from "../types.ts";
 
 const PNG_SIGNATURE = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -11,7 +11,7 @@ function writeIHDR(width: number, height: number, bitDepth: number, colorFormat:
 	view.setUint32(0, width);
 	view.setUint32(4, height);
 	buf[8] = bitDepth;
-	buf[9] = colorFormatNumbers.get(colorFormat);
+	buf[9] = pngColorFormats.get(colorFormat);
 	buf[10] = 0; // compression
 	buf[11] = 0; // filter
 	buf[12] = 0; // interlace
@@ -43,8 +43,12 @@ function writeChunk(type: string, data: Uint8Array): Uint8Array {
 	return chunk;
 }
 
+/**
+ * Encode an image into a PNG binary.
+ * @param opts The image encode options.
+ */
 export function encode(opts: EncodeOpts): Uint8Array {
-	const bitsPerPixel = colorFormatChannels.get(opts.colorFormat) * opts.bitDepth;
+	const bitsPerPixel = formatChannelCounts.get(opts.colorFormat) * opts.bitDepth;
 	const bytesPerRow = Math.ceil((opts.width * bitsPerPixel) / 8);
 	const expectedSize = bytesPerRow * opts.height;
 

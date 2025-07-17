@@ -1,18 +1,27 @@
 import { clamp, mapRange } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
-import { type BitDepth, colorFormatChannels, type DecodeResult } from "./types.ts";
+import { type BitDepth, formatChannelCounts, type DecodeResult } from "./types.ts";
 
 export class PNGFormatterTo {
-	// Helper functions to convert a 24-bit color to a number
+	/**
+	 * Convert a 24-bit RGB color into a 24-bit integer for indexing in the color palette.
+	 * @param color The color to convert, all values after color[2] are ignored.
+	 */
 	static c2n = (color: Uint8Array) => (color[0] << 16) + (color[1] << 8) + color[2];
+	/**
+	 * Convert a 24-bit integer into an RGB color. Inverse of {@link PNGFormatterTo.c2n}.
+	 * @param n The number.
+	 */
 	static n2c = (n: number) => new Uint8Array([(n & (0xff << 16)) >> 16, (n & (0xff << 8)) >> 8, n & 0xff]);
 	private _indexedPalette: Map<number, number> = new Map();
+
 	/**
 	 * A utility class that converts pixel arrays from RGBA to any supported format.
 	 * All methods assume that the image is already in valid RGBA, so this should be checked externally with {@link isRGBA}.
 	 * @param src The source image to format.
 	 */
 	constructor(public src: PNG) {}
+
 	/**
 	 * Check if the image is grayscale with no alpha.
 	 */
@@ -23,6 +32,7 @@ export class PNGFormatterTo {
 		}
 		return valid;
 	}
+
 	/**
 	 * Transform the pixel array into a single-channel grayscale array.
 	 * Does not mutate the old raw.
@@ -35,6 +45,7 @@ export class PNGFormatterTo {
 		}
 		return newRaw;
 	}
+
 	/**
 	 * Check if the image has no transparency.
 	 */
@@ -45,6 +56,7 @@ export class PNGFormatterTo {
 		}
 		return valid;
 	}
+
 	/**
 	 * Transform the pixel array into RGB with no alpha.
 	 * Does not mutate the old raw.
@@ -59,6 +71,7 @@ export class PNGFormatterTo {
 		}
 		return newRaw;
 	}
+
 	/**
 	 * Check if the image can be represented by indexed color.
 	 * This is rather slow as it has to manually perform color indexing.
@@ -84,6 +97,7 @@ export class PNGFormatterTo {
 
 		return true;
 	}
+
 	/**
 	 * Transform the pixel array into indexed color.
 	 * This does not mutate the old pixel array.
@@ -106,6 +120,7 @@ export class PNGFormatterTo {
 		}
 		return [palette, newRaw];
 	}
+
 	/**
 	 * Check if the image can be represented as grayscale with alpha.
 	 */
@@ -116,6 +131,7 @@ export class PNGFormatterTo {
 		}
 		return valid;
 	}
+
 	/**
 	 * Transform the pixel array into grayscale with alpha.
 	 * This does not mutate the old pixel array.
@@ -128,6 +144,7 @@ export class PNGFormatterTo {
 		}
 		return newRaw;
 	}
+
 	/**
 	 * Check if an image is valid RGBA, this should be called before other validators.
 	 * @param png The png to validate, this method requires width and height.
@@ -135,6 +152,7 @@ export class PNGFormatterTo {
 	canBeRGBA(): boolean {
 		return this.src.width * this.src.height * 4 === this.src.raw.length;
 	}
+
 	/**
 	 * This does nothing, it is just to be complete with the color formats.
 	 */
@@ -150,6 +168,7 @@ export class PNGFormatterFrom {
 	 * @param src The source image to format.
 	 */
 	constructor(public src: DecodeResult) {}
+
 	/**
 	 * Validate that the input pixel array length matches the expected length for this particular color format.
 	 * Also validates color indices for indexed color.
@@ -162,8 +181,9 @@ export class PNGFormatterFrom {
 			}
 			return this.src.width * this.src.height === this.src.raw.length && this.src.palette.length > maxIndex;
 		}
-		return this.src.width * this.src.height * colorFormatChannels.get(this.src.colorFormat) === this.src.raw.length;
+		return this.src.width * this.src.height * formatChannelCounts.get(this.src.colorFormat) === this.src.raw.length;
 	}
+
 	/**
 	 * Tranform a grayscale pixel array to RGBA.
 	 * Does not mutate the original array.
@@ -175,6 +195,7 @@ export class PNGFormatterFrom {
 		}
 		return newRaw;
 	}
+
 	/**
 	 * Tranform an RGB pixel array to RGBA.
 	 * Does not mutate the original array.
@@ -186,6 +207,7 @@ export class PNGFormatterFrom {
 		}
 		return newRaw;
 	}
+
 	/**
 	 * Tranform an indexed pixel array to RGBA.
 	 * Does not mutate the original array.
@@ -199,6 +221,7 @@ export class PNGFormatterFrom {
 		}
 		return newRaw;
 	}
+
 	/**
 	 * Tranform a grayscale pixel array with alpha to RGBA.
 	 * Does not mutate the original array.

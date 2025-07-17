@@ -1,21 +1,14 @@
 import { TwoWayMap } from "@aurellis/helpers";
 
-export const ColorFormats = {
-	GrayScale: { 1: true, 2: true, 4: true, 8: true },
-	RGB: { 8: true },
-	Indexed: { 1: true, 2: true, 4: true, 8: true },
-	GrayScaleAlpha: { 8: true },
-	RGBA: { 8: true }
-};
+/**
+ * The available options for bit depths on PNGs. Not all color formats support the fulll range of bit depths.
+ */
+export type BitDepth = 1 | 2 | 4 | 8;
 
-// There is probably a better way of formatting this, but it works :/
-type ColorFormatsType = typeof ColorFormats;
-export type ColorFormat = keyof ColorFormatsType;
-export type BitDepth = {
-	[K in keyof ColorFormatsType]: keyof ColorFormatsType[K];
-}[keyof ColorFormatsType];
-
-export const colorFormatChannels = new TwoWayMap({
+/**
+ * A map of the number of channels for each PNG color format.
+ */
+export const formatChannelCounts = new TwoWayMap({
 	Indexed: 1,
 	GrayScale: 1,
 	GrayScaleAlpha: 2,
@@ -23,7 +16,10 @@ export const colorFormatChannels = new TwoWayMap({
 	RGBA: 4
 });
 
-export const colorFormatNumbers = new TwoWayMap({
+/**
+ * A map of the available color formats for PNG files, and their respective numeric ID.
+ */
+export const pngColorFormats = new TwoWayMap({
 	GrayScale: 0,
 	RGB: 2,
 	Indexed: 3,
@@ -31,6 +27,14 @@ export const colorFormatNumbers = new TwoWayMap({
 	RGBA: 6
 });
 
+/**
+ * PNG color format names.
+ */
+export type ColorFormat = keyof typeof pngColorFormats.map;
+
+/**
+ * The output format of decoding a PNG file or a TIC entry.
+ */
 export type DecodeResult = {
 	raw: Uint8Array;
 	width: number;
@@ -52,6 +56,9 @@ export type DecodeResult = {
 	  }
 );
 
+/**
+ * Input options for PNG encoding.
+ */
 export type EncodeOpts = {
 	raw: Uint8Array;
 	width: number;
@@ -67,6 +74,10 @@ export type EncodeOpts = {
 	  }
 );
 
+/**
+ * A map of the available color formats for TIC files, and their respective numeric ID.
+ * Doubles as a channel count map.
+ */
 export const ticColorFormats = new TwoWayMap({
 	GrayScale: 1,
 	GrayScaleAlpha: 2,
@@ -74,8 +85,14 @@ export const ticColorFormats = new TwoWayMap({
 	RGBA: 4
 });
 
+/**
+ * TIC color format names.
+ */
 export type TicColorFormat = keyof typeof ticColorFormats.map;
 
+/**
+ * The decoded values of a TIC dictionary entry.
+ */
 export type TicDictEntry = {
 	byteOffset: number;
 	width: number;
