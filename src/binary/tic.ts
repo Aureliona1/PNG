@@ -56,7 +56,7 @@ export class TIC {
 	 */
 	static from(raw: Uint8Array): TIC {
 		const view = new DataView(raw.buffer);
-		const dictLength = raw.length ? view.getUint32(0) : 0;
+		const dictLength = raw.length >= 4 ? view.getUint32(0) : 0;
 		const output = new TIC(dictLength, new Map(), raw.subarray(dictLength + 4));
 
 		try {

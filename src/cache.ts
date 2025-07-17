@@ -1,4 +1,4 @@
-import { clog } from "@aurellis/helpers";
+import { clog, pathCanBeAccessed } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 import type { BitDepth, DecodeResult } from "./types.ts";
 import { TIC } from "./binary/tic.ts";
@@ -17,10 +17,9 @@ export class PNGCache {
 	 * @param fileName The name of the TIC cache.
 	 */
 	constructor(public readonly fileName = "cache.tic") {
-		try {
-			Deno.statSync(fileName);
+		if (pathCanBeAccessed(fileName)) {
 			this.readFile();
-		} catch (_) {
+		} else {
 			this.tic = new TIC();
 		}
 	}

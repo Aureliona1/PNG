@@ -1,9 +1,9 @@
-import { clog, compare } from "@aurellis/helpers";
+import { clog, compare, pathCanBeAccessed } from "@aurellis/helpers";
 import { PNG } from "@aurellis/png";
 import { TIC } from "../src/binary/tic.ts";
+import { PNGCache } from "../src/cache.ts";
 import { TicDictEntry } from "../src/types.ts";
 import { assert } from "../src/vendor/assert.ts";
-import { kStringMaxLength } from "node:buffer";
 
 const px = [255, 0, 0, 254, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255];
 
@@ -69,7 +69,7 @@ Deno.test({
 });
 
 Deno.test({
-	name: "TIC remove",
+	name: "TIC Remove",
 	fn: () => {
 		const c = TIC.from(generateSampleTIC());
 		c.removeEntry("test");
@@ -78,7 +78,7 @@ Deno.test({
 });
 
 Deno.test({
-	name: "TIC write",
+	name: "TIC Write",
 	fn: () => {
 		const c = new TIC();
 		assertIsEmptyTIC(c);
@@ -89,7 +89,7 @@ Deno.test({
 });
 
 Deno.test({
-	name: "TIC read",
+	name: "TIC Read",
 	fn: () => {
 		const c = TIC.from(generateSampleTIC());
 		const dec = c.readEntry("test");
@@ -102,10 +102,69 @@ Deno.test({
 });
 
 Deno.test({
-	name: "TIC encode",
+	name: "TIC Encode",
 	fn: () => {
 		const dict = new Map<string, TicDictEntry>([["test", { name: "test", nameLength: 4, width: 2, height: 2, byteOffset: 0, colorFormat: "RGBA", bitDepth: 8 }]]);
 		const c = new TIC(18, dict, new Uint8Array(px));
 		assert(compare(generateSampleTIC(), c.encode()));
+	}
+});
+
+// Wrapper functions
+
+const cacheFileName = "test/input/cache.tic";
+
+Deno.test({
+	name: "Cache Init + Entries",
+	fn: () => {
+		// Read sucess
+		Deno.writeFileSync(cacheFileName, generateSampleTIC());
+		let c = new PNGCache(cacheFileName);
+		assert(compare(c.entries, ["test"]));
+		Deno.removeSync(cacheFileName);
+		// Read failure
+		c = new PNGCache(cacheFileName);
+		assert(c.entries.length === 0);
+	}
+});
+
+Deno.test({
+	name: "Cache Read",
+	fn: () => {
+		Deno.writeFileSync(cacheFileName, generateSampleTIC());
+		const c = new PNGCache(cacheFileName);
+		const dec = c.read("test");
+		assert(dec.bitDepth === 8);
+		assert(dec.colorFormat === "RGBA");
+		assert(dec.height === 2);
+		assert(dec.width === 2);
+		assert(compare(dec.raw, new Uint8Array(px)));
+		Deno.removeSync(cacheFileName);
+	}
+});
+
+Deno.test({
+	name: "Cache Write",
+	fn: () => {
+		const c = new PNGCache(cacheFileName);
+		const im = new PNG(new Uint8Array(px), 2, 2);
+		c.write("test", im);
+		let raw = Deno.readFileSync(cacheFileName);
+		assert(compare(raw, generateSampleTIC()));
+		c.write("test");
+		raw = Deno.readFileSync(cacheFileName);
+		assert(compare(raw, new Uint8Array([0, 0, 0, 0])));
+		Deno.removeSync(cacheFileName);
+	}
+});
+
+Deno.test({
+	name: "Cache Clear",
+	fn: () => {
+		Deno.writeFileSync(cacheFileName, generateSampleTIC());
+		const c = new PNGCache(cacheFileName);
+		c.clear();
+		assert(!pathCanBeAccessed(cacheFileName));
+		assert(!c.entries.length);
 	}
 });
