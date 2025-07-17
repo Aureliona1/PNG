@@ -1,7 +1,7 @@
 import { TwoWayMap } from "@aurellis/helpers";
 
 /**
- * The available options for bit depths on PNGs. Not all color formats support the fulll range of bit depths.
+ * The available options for bit depths on PNGs. Not all color formats support the full range of bit depths.
  */
 export type BitDepth = 1 | 2 | 4 | 8;
 
