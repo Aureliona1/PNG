@@ -30,7 +30,7 @@ export const pngColorFormats = new TwoWayMap({
 /**
  * PNG color format names.
  */
-export type ColorFormat = keyof typeof pngColorFormats.map;
+export type ColorFormat = "GrayScale" | "RGB" | "Indexed" | "GrayScaleAlpha" | "RGBA";
 
 /**
  * The output format of decoding a PNG file or a TIC entry.
