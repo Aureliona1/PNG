@@ -64,6 +64,7 @@ Deno.test({
 		// Invalid TIC
 		const raw = generateSampleTIC();
 		let c = TIC.from(raw.subarray(0, 37));
+		clog("There should be a warning from TIC below this line...", "Log", "TIC Validate Test");
 		c.validate();
 		clog("There should be a warning from TIC above this line...", "Log", "TIC Validate Test");
 		assertIsEmptyTIC(c);
