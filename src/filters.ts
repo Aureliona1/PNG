@@ -42,7 +42,7 @@ export class PNGFilter {
 	constructor(private src: PNG) {}
 	/**
 	 * Over or under expose the image.
-	 * @param factor The multiplier to expose the image to (1 - no change)
+	 * @param factor The multiplier to expose the image to (1 - no effect).
 	 */
 	exposure(factor: number): PNGFilter {
 		this.src.function(false, (i, a) => clamp(a[i] * factor, [0, 255]));
@@ -66,7 +66,7 @@ export class PNGFilter {
 	}
 	private cf = (val: number, fac: number, thresh = 0.5) => clamp(fac * (val - thresh) + thresh, [0, 1]);
 	/**
-	 * Apply contrasting to image
+	 * Apply contrasting to image.
 	 * @param factor The contrast multiplier, 1 has no effect on the image.
 	 * @param thresh Value from 0 to 1 (inclusive). Pixels darker than this will become darker when factor > 1, pixels lighter than this will get lighter with factor > 1.
 	 */
@@ -80,10 +80,10 @@ export class PNGFilter {
 	 * @param alpha Whether to also blur the alpha values. (Default - false).
 	 * @param neighbourhood Determines the neighbourhood to use for blurring. (Default - Von-Neumann)
 	 *
-	 * Horizontal - blurs based on the average of the pixels above and below. (Fast)
-	 * Vertical - blurs based on the average of the pixels left and right. (Fast)
-	 * Von-Neumann - Combines horizontal and vertical. (Medium)
-	 * Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
+	 * - Horizontal - blurs based on the average of the pixels above and below. (Fast)
+	 * - Vertical - blurs based on the average of the pixels left and right. (Fast)
+	 * - Von-Neumann - Combines horizontal and vertical. (Medium)
+	 * - Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
 	 */
 	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): PNGFilter {
 		const sumEvery = (arr: Uint8Array, start: number, skip: number) => {
@@ -144,9 +144,9 @@ export class PNGFilter {
 	}
 	/**
 	 * Return the difference between pixels at a determined width.
-	 * @param width The width to check difference over. (Default - 1).
-	 * @param contrast The contrast factor to add over the image. (Default - 5).
-	 * @param contrastThresh The threshold to apply contrast to. (Default - 0.05)
+	 * @param width The width to check difference over (Default - 1).
+	 * @param contrast The contrast factor to add over the image (Default - 5).
+	 * @param contrastThresh The threshold to apply contrast to (Default - 0.05).
 	 */
 	edgeDetect(width = 1, contrast = 5, contrastThresh = 0.05): PNGFilter {
 		this.src.function(false, (i, arr) => {
@@ -182,9 +182,9 @@ export class PNGFilter {
 	}
 	/**
 	 * Apply tint effect to image by over/under exposing color channels.
-	 * @param color The color to tint the image (gamma rgb: 0 - 255), (Default - [255, 255, 255, 255]).
+	 * @param color The color to tint the image. [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	tint(color: Uint8Array = new Uint8Array([255, 255, 255, 255])): PNGFilter {
+	tint(color: ArrayLike<number> = [255, 255, 255, 255]): PNGFilter {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
 			this.src.raw[i] = clamp((this.src.raw[i] * (color[0] ?? 255)) / 255, [0, 255]);
 			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] * (color[1] ?? 255)) / 255, [0, 255]);
@@ -195,9 +195,9 @@ export class PNGFilter {
 	}
 	/**
 	 * Remove potential tints on the image by reversing tint function. This will not work if the original tint color contains a 0.
-	 * @param color The color to attemt to untint from (gamma rgb: 0 - 255), (Default - [255, 255, 255, 255]).
+	 * @param color The color to attempt to untint from. [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	unTint(color: Uint8Array = new Uint8Array([255, 255, 255, 255])): PNGFilter {
+	unTint(color: ArrayLike<number> = [255, 255, 255, 255]): PNGFilter {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
 			this.src.raw[i] = clamp((this.src.raw[i] / (color[0] ?? 255)) * 255, [0, 255]);
 			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] / (color[1] ?? 255)) * 255, [0, 255]);
@@ -207,7 +207,7 @@ export class PNGFilter {
 		return this;
 	}
 	/**
-	 * Add chromatic abberation to your image, all offsets are to the left. Larger images will typically need higher values to see the same effect.
+	 * Add chromatic abberation to your image, all offsets are to the left. Larger images will typically need higher values to see a similar effect.
 	 * @param r The red offset (integer value in pixels), (Default - 1).
 	 * @param g The green offset (integer value in pixels), (Default - 2).
 	 * @param b The blue offset (integer value in pixels), (Default - 3).
