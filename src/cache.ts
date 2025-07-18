@@ -71,9 +71,10 @@ export class PNGCache {
 			Deno.removeSync(this.fileName);
 		} catch (_) {
 			clog("Couldn't delete cache file, it will still be cleared...", "Error", "Cache");
+		} finally {
+			this.tic.dict.clear();
+			this.tic.dataChunk = new Uint8Array();
+			this.tic.dictLength = 0;
 		}
-		this.tic.dict.clear();
-		this.tic.dataChunk = new Uint8Array();
-		this.tic.dictLength = 0;
 	}
 }
