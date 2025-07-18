@@ -1,7 +1,7 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@aurellis/helpers@^1.2.2": "1.2.2",
+    "jsr:@aurellis/helpers@^1.2.3": "1.2.3",
     "jsr:@deno-library/compress@~0.5.6": "0.5.6",
     "jsr:@deno-library/crc32@1.0.2": "1.0.2",
     "jsr:@deno-library/crc32@^1.0.2": "1.0.2",
@@ -16,8 +16,8 @@
     "npm:@types/node@*": "22.14.0"
   },
   "jsr": {
-    "@aurellis/helpers@1.2.2": {
-      "integrity": "101aa256594b0f1f36afd11a13796f9cb681eb3be00497ecd9d3b16854745f6e"
+    "@aurellis/helpers@1.2.3": {
+      "integrity": "a290444715c7b7e7265ade65bd24ec349db0e166a09984c2cd5155a46b57e031"
     },
     "@deno-library/compress@0.5.6": {
       "integrity": "9d76e37e7682fc8d3d99d5641a7af454ce4689b1df3fd3062141a1deb64453cd",
@@ -77,7 +77,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@aurellis/helpers@^1.2.2",
+      "jsr:@aurellis/helpers@^1.2.3",
       "jsr:@deno-library/compress@~0.5.6",
       "jsr:@deno-library/crc32@^1.0.2"
     ]

@@ -76,7 +76,7 @@ export class TIC {
 				output.dict.set(thisEntry.name, thisEntry as TicDictEntry);
 			}
 		} catch (_) {
-			clog("Input TIC file either has an invalid dict length, or is missing bytes, resulting TIC may be corrupted...", "Error", "TIC");
+			clog("Input TIC file either has an invalid dict length, or is missing bytes, resulting TIC may be corrupted...", "Warning", "TIC");
 		}
 		return output;
 	}

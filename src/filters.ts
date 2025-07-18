@@ -51,12 +51,12 @@ export class PNGFilter {
 	/**
 	 * Adjust the image hue saturation and value.
 	 * @param hueShift 0 - no effect (values should be 0-1).
-	 * @param satFac 1 - no effect
-	 * @param valFac 1 - no effect
+	 * @param satFac Saturation multiplier. (Default - 1, no effect).
+	 * @param valFac Value multiplier. (Default - 1, no effect).
 	 */
-	hsv(hueShift: number, satFac: number, valFac: number): PNGFilter {
+	hsv(hueShift: number, satFac = 1, valFac = 1): PNGFilter {
 		for (let i = 0; i < this.src.raw.length / 4; i++) {
-			const hsv = byteRgbToHsv(this.src.raw.subarray(i * 4, i * 4 + 3));
+			const hsv = byteRgbToHsv(this.src.raw.subarray(i * 4, i * 4 + 4));
 			hsv[0] = (hsv[0] + hueShift * 255) % 255;
 			hsv[1] = clamp(hsv[1] * satFac, [0, 255]);
 			hsv[2] = clamp(hsv[2] * valFac, [0, 255]);
@@ -67,7 +67,8 @@ export class PNGFilter {
 	private cf = (val: number, fac: number, thresh = 0.5) => clamp(fac * (val - thresh) + thresh, [0, 1]);
 	/**
 	 * Apply contrasting to image
-	 * @param factor 1 - no effect
+	 * @param factor The contrast multiplier, 1 has no effect on the image.
+	 * @param thresh Value from 0 to 1 (inclusive). Pixels darker than this will become darker when factor > 1, pixels lighter than this will get lighter with factor > 1.
 	 */
 	contrast(factor: number, thresh = 0.5): PNGFilter {
 		this.src.function(false, (i, a) => this.cf(a[i] / 255, factor, thresh) * 255);
@@ -77,11 +78,11 @@ export class PNGFilter {
 	 * Blur the image by averaging neighbouring pixels.
 	 * @param iterations The number of averages to take, the more you blur the image, the longer it takes to run.
 	 * @param alpha Whether to also blur the alpha values. (Default - false).
-	 * @param neighbourhood Determines the neighbourhood to use for blurring. (Default = Von-Neumann)
+	 * @param neighbourhood Determines the neighbourhood to use for blurring. (Default - Von-Neumann)
 	 *
 	 * Horizontal - blurs based on the average of the pixels above and below. (Fast)
 	 * Vertical - blurs based on the average of the pixels left and right. (Fast)
-	 * Von-Neumann - Combines horizontal and vertical. (Meduim)
+	 * Von-Neumann - Combines horizontal and vertical. (Medium)
 	 * Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
 	 */
 	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): PNGFilter {
