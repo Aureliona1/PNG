@@ -4,10 +4,10 @@ import type { BitDepth, DecodeResult } from "./types.ts";
 import { TIC } from "./binary/tic.ts";
 
 export class PNGCache {
-	private async readFile() {
+	private readFile() {
 		if (pathCanBeAccessed(this.fileName)) {
 			try {
-				this.tic = TIC.from(await Deno.readFile(this.fileName));
+				this.tic = TIC.from(Deno.readFileSync(this.fileName));
 			} catch (_) {
 				clog("Error reading TIC cache file, check your read permissions...", "Error", "Cache");
 			}
@@ -49,7 +49,7 @@ export class PNGCache {
 			this.tic.writeEntry(entryName, im, bitDepth);
 		}
 		try {
-			Deno.writeFile(this.fileName, this.tic.encode());
+			Deno.writeFileSync(this.fileName, this.tic.encode());
 		} catch (_) {
 			clog("Error writing cache file, cache is still updated in memory but not on disk...", "Error", "Cache");
 		}
@@ -68,13 +68,12 @@ export class PNGCache {
 	 */
 	clear() {
 		try {
-			Deno.remove(this.fileName);
+			Deno.removeSync(this.fileName);
 		} catch (_) {
 			clog("Couldn't delete cache file, it will still be cleared...", "Error", "Cache");
-		} finally {
-			this.tic.dict.clear();
-			this.tic.dataChunk = new Uint8Array();
-			this.tic.dictLength = 0;
 		}
+		this.tic.dict.clear();
+		this.tic.dataChunk = new Uint8Array();
+		this.tic.dictLength = 0;
 	}
 }
