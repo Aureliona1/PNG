@@ -163,7 +163,7 @@ export class PNG {
 		const newRaw = new Uint8Array(width * height * 4);
 		for (let row = 0; row < height; row++) {
 			for (let col = 0; col < width; col++) {
-				newRaw.subarray((row * width + col) * 4, (row * width + col + 1) * 4).set(this.getPixel(row + y, col + x));
+				newRaw.subarray((row * width + col) * 4, (row * width + col + 1) * 4).set(this.getPixel(col + x, row + y));
 			}
 		}
 		this.raw = newRaw;
