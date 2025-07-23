@@ -149,6 +149,30 @@ export class PNG {
 	}
 
 	/**
+	 * Crop the image based on a start point and dimensions.
+	 * @param x The pixel column from the left, this will be the top left of the resulting image.
+	 * @param y The pixel row from the top, the will be the top left of the resulting image.
+	 * @param width The width of the resulting image.
+	 * @param height The height of the resulting image.
+	 */
+	crop(x = 0, y = 0, width = this.width, height = this.height): PNG {
+		x = clamp(x, [0, this.width - 1]);
+		y = clamp(y, [0, this.height - 1]);
+		width = clamp(width, [1, this.width - x]);
+		height = clamp(height, [1, this.height - y]);
+		const newRaw = new Uint8Array(width * height * 4);
+		for (let row = 0; row < height; row++) {
+			for (let col = 0; col < width; col++) {
+				newRaw.subarray((row * width + col) * 4, (row * width + col + 1) * 4).set(this.getPixel(row + y, col + x));
+			}
+		}
+		this.raw = newRaw;
+		this.width = width;
+		this.height = height;
+		return this;
+	}
+
+	/**
 	 * Runs a function on all image values.
 	 * @param affectAlpha Whether or not to affect alpha values.
 	 * @param x The function.
