@@ -164,7 +164,7 @@ export class PNGFormatterTo {
 export class PNGFormatterFrom {
 	/**
 	 * A utility class that converts pixel arrays from any supported format to RGBA.
-	 * All methods assume that the image is in the specified format, this shuold be checked externally with {@link isCorrectFormat()}.
+	 * All methods assume that the image is in the specified format, this should be checked externally with {@link isCorrectFormat()}.
 	 * @param src The source image to format.
 	 */
 	constructor(public src: DecodeResult) {}

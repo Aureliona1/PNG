@@ -9,23 +9,23 @@ export class PNGDraw {
 	constructor(public src: PNG) {}
 	/**
 	 * Fill the image with a specific color.
-	 * @param dims The dimensions of the image [width, height]
-	 * @param color The color (gamma rgb)
+	 * @param width The resulting width of the image.
+	 * @param height The resulting height of the image.
+	 * @param color The color [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	generateBlank(dims = [this.src.width, this.src.height], color = [255, 255, 255, 255]): PNG {
-		this.src.raw = new Uint8Array(dims[0] * dims[1] * 4).map((_v, i) => color[i % 4]);
-		// this.src.dimensions = dims;
-		this.src.width = dims[0];
-		this.src.height = dims[1];
-		return this.src;
+	generateBlank(width = this.src.width, height = this.src.height, color = [255, 255, 255, 255]): PNGDraw {
+		this.src.raw = new Uint8Array(width * height * 4).map((_v, i) => color[i % 4]);
+		this.src.width = width;
+		this.src.height = height;
+		return this;
 	}
 	/**
 	 * Draws a vector on the PNG.
 	 * @param start The start coord [col from left, row from top].
 	 * @param end The end coord.
-	 * @param color The color.
+	 * @param color The color [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	line(start: Vec2, end: Vec2, thickness = 1, color: ArrayLike<number> = [255, 255, 255, 255]): PNG {
+	line(start: Vec2, end: Vec2, thickness = 1, color: ArrayLike<number> = [255, 255, 255, 255]): PNGDraw {
 		start = start.map(x => Math.floor(x)) as Vec2;
 		end = end.map(x => Math.floor(x)) as Vec2;
 		thickness--;
@@ -54,18 +54,19 @@ export class PNGDraw {
 				start[1] += sy;
 			}
 		}
-		return this.src;
+		return this;
 	}
 	/**
 	 * Draw random noise across the image.
-	 * @param dims The dimensions of the image.
+	 * @param width The resulting width of the image.
+	 * @param height The resulting height of the image.
 	 * @param z The z offset.
 	 * @param scale The scale of the noise, lower values will spread the noise out.
 	 * @param seed The seed for the noise generator.
 	 * @param byColor Set this to true to run the noise over the image by each color instead of all color channels consecutively. (Default - false)
 	 */
-	noisify(dims = [this.src.width, this.src.height], z = 0, scale = 1, seed: number = Math.random(), byColor = false): PNG {
-		this.generateBlank(dims);
+	noisify(width = this.src.width, height = this.src.height, z = 0, scale = 1, seed: number = Math.random(), byColor = false): PNGDraw {
+		this.generateBlank(width, height);
 		if (byColor) {
 			let noise = makeNoise3D(seed * 3276.123);
 			for (let i = 0; i < this.src.raw.length; i += 4) {
@@ -83,53 +84,55 @@ export class PNGDraw {
 			const noise = makeNoise3D(seed);
 			this.src.function(false, i => mapRange(noise((i % (this.src.width * 4)) * scale, Math.floor(i / (this.src.width * 4)) * scale, z), [-1, 1], [0, 255], 0));
 		}
-		return this.src;
+		return this;
 	}
 
 	/**
 	 * Generate a fractal using the serpinski (idk how to spell it) algorithm.
-	 * @param dims The dimensions of the image.
 	 * @param corners The number of corneers of the resulting fractal shape.
 	 * @param color The color of the shape.
+	 * @param width The resulting width of the image.
+	 * @param height The resulting height of the image.
 	 * @param fadeWhite Optional, fade more common pixels to white.
 	 */
-	fractalPolygon(dims = [this.src.width, this.src.height], corners = 3, color: Vec4 = [255, 0, 0, 255], fadeWhite = false): PNG {
+	fractalPolygon(corners = 3, color: Vec4 = [255, 0, 0, 255], width = this.src.width, height = this.src.height, fadeWhite = false): PNGDraw {
 		// Create black bg
-		this.generateBlank(dims, [0, 0, 0, 255]);
+		this.generateBlank(width, height, [0, 0, 0, 255]);
 
 		// Init shape corners
 		const cornerPoints = Array(corners)
 			.fill([0, 0])
-			.map((_, i) => rotateVector([dims[0] / 2, dims[1] / 2, 0], [0, dims[1] / 2, 0], [0, 0, (i * 360) / corners]).slice(0, 2) as Vec2);
+			.map((_, i) => rotateVector([width / 2, height / 2, 0], [0, height / 2, 0], [0, 0, (i * 360) / corners]).slice(0, 2) as Vec2);
 
 		// Draw
-		let currentPoint = dims.map(x => x / 2) as Vec2;
+		let currentPoint: Vec2 = [width / 2, height / 2];
 		if (fadeWhite) {
-			progressRepeat(dims[0] * dims[1], () => {
+			progressRepeat(width * height, () => {
 				currentPoint = midPoint(currentPoint, cornerPoints[Math.floor(Math.random() * corners)], true);
 				const thisColor = ArrOp.lerp(color, [255, 255, 255, 255], new ArrOp(this.src.getPixel(...currentPoint)).sum / 1020);
 				this.src.setPixel(...currentPoint, thisColor);
 			});
 		} else {
-			progressRepeat(dims[0] * dims[1], () => {
+			progressRepeat(width * height, () => {
 				currentPoint = midPoint(currentPoint, cornerPoints[Math.floor(Math.random() * corners)], true);
 				this.src.setPixel(...currentPoint, color);
 			});
 		}
-		return this.src;
+		return this;
 	}
 	/**
 	 * Generate a fractal binary tree shape.
-	 * @param dims The dimensions of the resulting image.
 	 * @param layers The number of tree layers.
 	 * @param angleOffset The offset angle of each layer.
 	 * @param lengthFactor The factor by which each layer's length should change.
+	 * @param width The resulting width of the image.
+	 * @param height The resulting height of the image.
 	 * @param initialLength The length (in pixels) of the first layer.
 	 * @param baseColor The base color of the tree.
 	 * @param outerColor The color of the final layer of the tree.
 	 */
-	fractalTree(dims = [this.src.width, this.src.height], layers = 10, angleOffset = 20, lengthFactor = 0.9, initialLength = this.src.height * 0.13, baseColor: Vec4 = [255, 0, 0, 255], outerColor: Vec4 = [255, 255, 255, 255]): PNG {
-		this.generateBlank(dims, [0, 0, 0, 255]);
+	fractalTree(layers = 10, angleOffset = 20, lengthFactor = 0.9, width = this.src.width, height = this.src.height, initialLength = this.src.height * 0.13, baseColor: Vec4 = [255, 0, 0, 255], outerColor: Vec4 = [255, 255, 255, 255]): PNG {
+		this.generateBlank(width, height, [0, 0, 0, 255]);
 		let ends: Vec3[] = [[this.src.height - 1, Math.floor(this.src.width / 2), 0]];
 		for (let i = 0; i < layers; i++) {
 			const newEnds: Vec3[] = [];
@@ -148,14 +151,14 @@ export class PNGDraw {
 	 * @param dims The dimensions of the diagram.
 	 * @param pointCount The number of points in the diagram.
 	 */
-	voronoiDiagram(dims = [this.src.width, this.src.height], pointCount = 10): PNG {
-		const maxDist = distance(dims, [0, 0]);
-		this.generateBlank(dims);
+	voronoiDiagram(pointCount = 10, width = this.src.width, height = this.src.height): PNGDraw {
+		const maxDist = distance([width, height], [0, 0]);
+		this.generateBlank(width, height);
 		const points = Array(pointCount)
 			.fill(0)
-			.map(() => [Math.random() * dims[0], Math.random() * dims[1], hsv2rgb([Math.random(), 1, 1, 1]).map(x => Math.floor(x * 255))].map((x, i) => (i > 1 ? Math.floor(x as number) : x))) as [number, number, Vec4][];
-		for (let row = 0; row < dims[0]; row++) {
-			for (let col = 0; col < dims[1]; col++) {
+			.map(() => [Math.random() * width, Math.random() * height, hsv2rgb([Math.random(), 1, 1, 1]).map(x => Math.floor(x * 255))].map((x, i) => (i > 1 ? Math.floor(x as number) : x))) as [number, number, Vec4][];
+		for (let row = 0; row < width; row++) {
+			for (let col = 0; col < height; col++) {
 				let shortestDist = distance([row, col], points[0].slice(0, 2) as Vec2);
 				let closestPointIndex = 0;
 				for (let i = 1; i < points.length; i++) {
@@ -172,6 +175,6 @@ export class PNGDraw {
 				);
 			}
 		}
-		return this.src;
+		return this;
 	}
 }

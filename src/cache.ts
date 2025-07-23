@@ -9,7 +9,8 @@ export class PNGCache {
 			try {
 				this.tic = TIC.from(Deno.readFileSync(this.fileName));
 			} catch (_) {
-				clog("Error reading TIC cache file, check your read permissions...", "Error", "Cache");
+				clog("Error reading TIC cache file, check your read permissions...", "Warning", "PNG Cache");
+				clog("Loaded image cache is not synced with the disk...", "Warning", "PNG Cache");
 			}
 		}
 	}
@@ -51,7 +52,8 @@ export class PNGCache {
 		try {
 			Deno.writeFileSync(this.fileName, this.tic.encode());
 		} catch (_) {
-			clog("Error writing cache file, cache is still updated in memory but not on disk...", "Error", "Cache");
+			clog("Error writing cache file, cache is still updated in memory but not on disk...", "Warning", "PNG Cache");
+			clog("Check your write permisions...", "Warning", "PNG Cache");
 		}
 	}
 
@@ -70,10 +72,11 @@ export class PNGCache {
 		try {
 			Deno.removeSync(this.fileName);
 		} catch (_) {
-			clog("Couldn't delete cache file, it will still be cleared...", "Error", "Cache");
+			clog("Couldn't delete cache file, cache will be cleared in memory but file may still exist on disk...", "Warning", "PNG Cache");
+		} finally {
+			this.tic.dict.clear();
+			this.tic.dataChunk = new Uint8Array();
+			this.tic.dictLength = 0;
 		}
-		this.tic.dict.clear();
-		this.tic.dataChunk = new Uint8Array();
-		this.tic.dictLength = 0;
 	}
 }

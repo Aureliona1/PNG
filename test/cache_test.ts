@@ -1,23 +1,28 @@
-import { clog, compare, pathCanBeAccessed } from "@aurellis/helpers";
+import { Cache, clog, compare, pathCanBeAccessed } from "@aurellis/helpers";
 import { PNG } from "@aurellis/png";
 import { TIC } from "../src/binary/tic.ts";
 import { PNGCache } from "../src/cache.ts";
 import { TicDictEntry } from "../src/types.ts";
 import { assert } from "../src/vendor/assert.ts";
 
-const px = [255, 0, 0, 254, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255];
+const sc = new Cache("test/output/RGBA8.png.json");
+const sampleImage = {
+	width: sc.read<number>("width"),
+	height: sc.read<number>("height"),
+	raw: sc.read<number[]>("RGBA")
+};
 
 /**
  * Generate a sample TIC file containing one 2x2, 8-bit, RGBA image.
  * The image is called "test".
  */
 function generateSampleTIC(): Uint8Array {
-	const dataBuffer = new ArrayBuffer(38);
+	const dataBuffer = new ArrayBuffer(22 + sampleImage.raw.length);
 	const v = new DataView(dataBuffer);
 	v.setUint32(0, 18); // dict length
 	v.setUint32(4, 0); // byte start
-	v.setUint32(8, 2); // width
-	v.setUint32(12, 2); // height
+	v.setUint32(8, sampleImage.width); // width
+	v.setUint32(12, sampleImage.height); // height
 	v.setUint8(16, 240); // RGBA 8
 	v.setUint8(17, 4); // name length
 	v.setUint8(18, "t".charCodeAt(0));
@@ -25,14 +30,15 @@ function generateSampleTIC(): Uint8Array {
 	v.setUint8(20, "s".charCodeAt(0));
 	v.setUint8(21, "t".charCodeAt(0));
 	const data = new Uint8Array(dataBuffer);
-	data.set(px, 22);
+	data.set(sampleImage.raw, 22);
 	return data;
 }
 
 function assertIsSampleTIC(tic: TIC) {
 	assert(tic.dictLength === 18);
-	assert(compare(tic.dict, new Map<string, TicDictEntry>().set("test", { byteOffset: 22, width: 2, height: 2, colorFormat: "RGBA", bitDepth: 8, nameLength: 4, name: "test" })));
-	assert(compare(tic.dataChunk, new Uint8Array(px)));
+	const compareMap = new Map<string, TicDictEntry>([["test", { byteOffset: 0, width: sampleImage.width, height: sampleImage.height, colorFormat: "RGBA", bitDepth: 8, nameLength: 4, name: "test" }]]);
+	assert(compare(tic.dict, compareMap));
+	assert(compare(tic.dataChunk, new Uint8Array(sampleImage.raw)));
 }
 
 function assertIsEmptyTIC(tic: TIC) {
@@ -58,7 +64,9 @@ Deno.test({
 		// Invalid TIC
 		const raw = generateSampleTIC();
 		let c = TIC.from(raw.subarray(0, 37));
+		clog("There should be a warning from TIC below this line...", "Log", "TIC Validate Test");
 		c.validate();
+		clog("There should be a warning from TIC above this line...", "Log", "TIC Validate Test");
 		assertIsEmptyTIC(c);
 
 		// Already valid TIC
@@ -82,7 +90,7 @@ Deno.test({
 	fn: () => {
 		const c = new TIC();
 		assertIsEmptyTIC(c);
-		const im = new PNG(new Uint8Array(px), 2, 2);
+		const im = new PNG(new Uint8Array(sampleImage.raw), sampleImage.width, sampleImage.height);
 		c.writeEntry("test", im);
 		assertIsSampleTIC(c);
 	}
@@ -95,17 +103,17 @@ Deno.test({
 		const dec = c.readEntry("test");
 		assert(dec.bitDepth === 8);
 		assert(dec.colorFormat === "RGBA");
-		assert(dec.height === 2);
-		assert(compare(dec.raw, new Uint8Array(px)));
-		assert(dec.width === 2);
+		assert(dec.height === sampleImage.height);
+		assert(compare(dec.raw, new Uint8Array(sampleImage.raw)));
+		assert(dec.width === sampleImage.width);
 	}
 });
 
 Deno.test({
 	name: "TIC Encode",
 	fn: () => {
-		const dict = new Map<string, TicDictEntry>([["test", { name: "test", nameLength: 4, width: 2, height: 2, byteOffset: 0, colorFormat: "RGBA", bitDepth: 8 }]]);
-		const c = new TIC(18, dict, new Uint8Array(px));
+		const dict = new Map<string, TicDictEntry>([["test", { name: "test", nameLength: 4, width: sampleImage.width, height: sampleImage.height, byteOffset: 0, colorFormat: "RGBA", bitDepth: 8 }]]);
+		const c = new TIC(18, dict, new Uint8Array(sampleImage.raw));
 		assert(compare(generateSampleTIC(), c.encode()));
 	}
 });
@@ -136,9 +144,9 @@ Deno.test({
 		const dec = c.read("test");
 		assert(dec.bitDepth === 8);
 		assert(dec.colorFormat === "RGBA");
-		assert(dec.height === 2);
-		assert(dec.width === 2);
-		assert(compare(dec.raw, new Uint8Array(px)));
+		assert(dec.height === sampleImage.height);
+		assert(dec.width === sampleImage.width);
+		assert(compare(dec.raw, new Uint8Array(sampleImage.raw)));
 		Deno.removeSync(cacheFileName);
 	}
 });
@@ -147,7 +155,7 @@ Deno.test({
 	name: "Cache Write",
 	fn: () => {
 		const c = new PNGCache(cacheFileName);
-		const im = new PNG(new Uint8Array(px), 2, 2);
+		const im = new PNG(new Uint8Array(sampleImage.raw), sampleImage.width, sampleImage.height);
 		c.write("test", im);
 		let raw = Deno.readFileSync(cacheFileName);
 		assert(compare(raw, generateSampleTIC()));
