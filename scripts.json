@@ -1,0 +1,16 @@
+{
+    "allow": [
+        "all"
+    ],
+    "scripts": {
+        "test/interface_test": {
+            "cmd": "deno run test/interface_test.ts"
+        }
+    },
+    "watcher": {
+        "exts": [
+            "ts"
+        ],
+        "legacy": false
+    }
+}

@@ -13,7 +13,7 @@ export class PNGDraw {
 	 * @param height The resulting height of the image.
 	 * @param color The color [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	generateBlank(width = this.src.width, height = this.src.height, color = [255, 255, 255, 255]): PNGDraw {
+	generateBlank(width = this.src.width, height = this.src.height, color: ArrayLike<number> = [255, 255, 255, 255]): PNGDraw {
 		this.src.raw = new Uint8Array(width * height * 4).map((_v, i) => color[i % 4]);
 		this.src.width = width;
 		this.src.height = height;

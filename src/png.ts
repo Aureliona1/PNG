@@ -1,7 +1,7 @@
 import { ArrOp, clamp, clog, ensureFile, type Vec2 } from "@aurellis/helpers";
-import { PNGCache } from "./cache.ts";
 import { decode } from "./binary/decode.ts";
 import { encode } from "./binary/encode.ts";
+import { PNGCache } from "./cache.ts";
 import { PNGDraw } from "./draw.ts";
 import { PNGFilter } from "./filters.ts";
 import { gammaCorrect, packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "./format.ts";
@@ -37,7 +37,7 @@ export class PNG {
 	}
 
 	private static fromDecode(dec: DecodeResult, imageName: string): PNG {
-		dec.raw = unpackBits(dec.raw, dec.bitDepth, dec.colorFormat !== "Indexed");
+		dec.raw = unpackBits(dec.raw, dec.width, dec.bitDepth, dec.colorFormat !== "Indexed");
 		const formatter = new PNGFormatterFrom(dec);
 		if (formatter.isCorrectFormat()) {
 			if (dec.colorFormat !== "RGBA") {
@@ -82,15 +82,25 @@ export class PNG {
 		return new PNGDraw(this);
 	}
 
+	raw: Uint8Array = new Uint8Array();
+	width = 100;
+	height = 100;
 	/**
 	 * A class that handles many operations regarding PNG files.
-	 * @param raw The raw pixel values, of the PNG. (Optional)
+	 * @param raw The raw pixel values of the PNG, this may be left blank to create a white image.
+	 * If the length of these pixel values does not match the expected length of a RGBA image with the specified dimensions.
+	 * Then the first 4 entries will be used as a color to apply to the entire image (missing values will be interpreted as 255).
 	 * @param width The width of the PNG. (Default - 100)
 	 * @param height The height of the PNG. (Default - 100)
 	 */
-	constructor(public raw: Uint8Array = new Uint8Array(), public width = 100, public height = 100) {
-		if (!raw.length) {
-			this.draw.generateBlank();
+	constructor(raw?: Uint8Array, width?: number, height?: number) {
+		this.width = width ?? this.width;
+		this.height = height ?? this.height;
+		this.raw = raw ?? this.raw;
+		if (!new PNGFormatterTo(this).canBeRGBA()) {
+			const color = new Uint8Array(4).fill(255);
+			color.set(this.raw.slice(0, 4));
+			this.draw.generateBlank(this.width, this.height, color);
 		}
 	}
 
@@ -267,7 +277,7 @@ export class PNG {
 		}
 
 		// Pack bits if needed.
-		outRaw = packBits(outRaw, bitDepth, colorFormat !== "Indexed");
+		outRaw = packBits(outRaw, this.width, bitDepth, colorFormat !== "Indexed");
 
 		let bin: Uint8Array;
 		if (colorFormat == "Indexed") {

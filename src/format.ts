@@ -1,6 +1,6 @@
 import { clamp, mapRange } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
-import { type BitDepth, formatChannelCounts, type DecodeResult } from "./types.ts";
+import { formatChannelCounts, type BitDepth, type DecodeResult } from "./types.ts";
 
 export class PNGFormatterTo {
 	/**
@@ -238,46 +238,64 @@ export class PNGFormatterFrom {
 /**
  * Take an array of bytes and return the array with the bits packed to the desired bit depth.
  * @param bytes The input bytes.
+ * @param rowWidth The number of values per row. This assumes that a single-channel color format is being used.
  * @param desiredBitDepth The desired bit depth.
  * @param normalise Whether to normalise the value to within the range supported by the desired bit depth. Don't use this for indexed pngs
  * @returns A new packed array, does not mutate the original array.
  */
-export function packBits(bytes: Uint8Array, desiredBitDepth: BitDepth, normalise = true): Uint8Array {
-	if (desiredBitDepth < 8) {
-		const newRaw = new Uint8Array((bytes.length * desiredBitDepth) / 8);
-		const valuesPerByte = 8 / desiredBitDepth;
-		for (let i = 0; i < newRaw.length; i++) {
-			for (let j = 0; j < valuesPerByte; j++) {
-				const value = bytes[i * valuesPerByte + j];
-				const normalisedValue = value >> (8 - desiredBitDepth);
-				newRaw[i] |= ((normalise ? normalisedValue : value) & ((1 << desiredBitDepth) - 1)) << ((valuesPerByte - j - 1) * desiredBitDepth);
-			}
+export function packBits(bytes: Uint8Array, rowWidth: number, desiredBitDepth: BitDepth, normalise = true): Uint8Array {
+	if (desiredBitDepth >= 8) return bytes;
+
+	const valuesPerByte = 8 / desiredBitDepth;
+	const rowByteLength = Math.ceil(rowWidth / valuesPerByte);
+	const height = Math.ceil(bytes.length / rowWidth);
+	const packed = new Uint8Array(rowByteLength * height);
+
+	for (let row = 0; row < height; row++) {
+		for (let col = 0; col < rowWidth; col++) {
+			const i = row * rowWidth + col;
+			const value = bytes[i] ?? 0;
+			const normalized = normalise ? value >> (8 - desiredBitDepth) : value & ((1 << desiredBitDepth) - 1);
+			const byteIndex = row * rowByteLength + Math.floor(col / valuesPerByte);
+			const bitOffset = (valuesPerByte - 1 - (col % valuesPerByte)) * desiredBitDepth;
+			packed[byteIndex] |= normalized << bitOffset;
 		}
-		return newRaw;
 	}
-	return bytes;
+
+	return packed;
 }
 
 /**
  * Take an array of packed bits and return the unpacked bytes.
  * @param bits The bit-packed array.
+ * @param rowWidth The number of values per row, this assumes a single-channel color format is being used.
  * @param currentBitDepth The current bit depth to unpack.
  * @param normalise Whether to normalise the unpacked bits into a byte range. Do not do this for indexed pngs.
  */
-export function unpackBits(bits: Uint8Array, currentBitDepth: BitDepth, normalise = true): Uint8Array {
-	if (currentBitDepth < 8) {
-		const newRaw = new Uint8Array((bits.length * 8) / currentBitDepth);
-		const maxOffset = 8 - currentBitDepth;
-		const modulo = (1 << currentBitDepth) - 1;
-		for (let i = 0; i < newRaw.length; i++) {
-			newRaw[i] = (bits[Math.floor((i * currentBitDepth) / 8)] >> (maxOffset - ((i * currentBitDepth) & maxOffset))) & modulo;
+export function unpackBits(bits: Uint8Array, rowWidth: number, currentBitDepth: BitDepth, normalise = true): Uint8Array {
+	if (currentBitDepth >= 8) return bits;
+
+	const valuesPerByte = 8 / currentBitDepth;
+	const rowByteLength = Math.ceil(rowWidth / valuesPerByte);
+	const height = Math.floor(bits.length / rowByteLength);
+	const output = new Uint8Array(rowWidth * height);
+	const mask = (1 << currentBitDepth) - 1;
+
+	for (let row = 0; row < height; row++) {
+		for (let col = 0; col < rowWidth; col++) {
+			const byteIndex = row * rowByteLength + Math.floor(col / valuesPerByte);
+			const bitOffset = (valuesPerByte - 1 - (col % valuesPerByte)) * currentBitDepth;
+			let value = (bits[byteIndex] >> bitOffset) & mask;
+
 			if (normalise) {
-				newRaw[i] = mapRange(newRaw[i], [0, (1 << currentBitDepth) - 1], [0, 255]);
+				value = mapRange(value, [0, mask], [0, 255]);
 			}
+
+			output[row * rowWidth + col] = value;
 		}
-		return newRaw;
 	}
-	return bits;
+
+	return output;
 }
 
 /**
