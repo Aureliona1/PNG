@@ -184,7 +184,7 @@ export class TIC {
 		} else {
 			colorFormat = "RGBA";
 		}
-		encodedRaw = packBits(encodedRaw, bitDepth);
+		encodedRaw = packBits(encodedRaw, im.width, bitDepth);
 		const thisEntry: TicDictEntry = {
 			byteOffset: this.dataChunk.length,
 			width: im.width,
