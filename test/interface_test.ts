@@ -1,4 +1,4 @@
-import { compare } from "@aurellis/helpers";
+import { clog, compare } from "@aurellis/helpers";
 import { PNG } from "../src/png.ts";
 import { assert } from "../src/vendor/assert.ts";
 

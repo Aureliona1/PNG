@@ -1,4 +1,4 @@
-import { compare, random } from "@aurellis/helpers";
+import { clog, compare, concatUint8, random } from "@aurellis/helpers";
 import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "../src/format.ts";
 import { PNG } from "../src/png.ts";
 import { DecodeResult } from "../src/types.ts";
@@ -18,7 +18,7 @@ Deno.test({
 Deno.test({
 	name: "Can't be GrayScale",
 	fn: () => {
-		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255, 0, 1, 0, 255]);
+		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 3, 4, 255]);
 		let im = new PNG(raw, 2, 2);
 		assert(!new PNGFormatterTo(im).canBeGrayScale());
 		raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 254, 3, 3, 3, 255, 4, 4, 4, 255, 0, 0, 0, 255]);
@@ -39,7 +39,7 @@ Deno.test({
 Deno.test({
 	name: "Can't be RGB",
 	fn: () => {
-		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255, 0, 1, 0, 254]);
+		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 254]);
 		let im = new PNG(raw, 2, 2);
 		assert(!new PNGFormatterTo(im).canBeGrayScale());
 	}
@@ -48,7 +48,7 @@ Deno.test({
 Deno.test({
 	name: "Can be Indexed",
 	fn: () => {
-		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255, 0, 1, 0, 255]);
+		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255]);
 		let im = new PNG(raw, 2, 2);
 		assert(new PNGFormatterTo(im).canBeIndexed());
 		raw = new Uint8Array([0, 0, 0, 255]);
@@ -64,7 +64,7 @@ Deno.test({
 Deno.test({
 	name: "Can't be Indexed",
 	fn: () => {
-		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255, 0, 1, 0, 254]);
+		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 254]);
 		let im = new PNG(raw, 2, 2);
 		assert(!new PNGFormatterTo(im).canBeIndexed());
 		raw = new Uint8Array(17 * 17 * 4).fill(255);
@@ -95,7 +95,7 @@ Deno.test({
 Deno.test({
 	name: "Can't be GrayScaleAlpha",
 	fn: () => {
-		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255, 0, 1, 0, 255]);
+		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 2, 3, 255, 4, 4, 4, 255]);
 		let im = new PNG(raw, 2, 2);
 		assert(!new PNGFormatterTo(im).canBeGrayScaleAlpha());
 	}
@@ -114,13 +114,14 @@ Deno.test({
 });
 
 Deno.test({
-	name: "Can't be GrayScaleAlpha",
+	name: "Can't be RGBA",
 	fn: () => {
-		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255, 0, 1, 0]);
+		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255]);
 		let im = new PNG(raw, 2, 2);
+		im.raw = concatUint8([im.raw, new Uint8Array([1, 0, 1])]);
 		assert(!new PNGFormatterTo(im).canBeRGBA());
-		raw = new Uint8Array([0, 0, 0, 0, 1]);
-		im = new PNG(raw, 1, 1);
+		im = new PNG(undefined, 1, 1);
+		im.raw = new Uint8Array([0, 0, 0]);
 		assert(!new PNGFormatterTo(im).canBeRGBA());
 	}
 });

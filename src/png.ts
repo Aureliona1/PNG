@@ -88,16 +88,16 @@ export class PNG {
 	/**
 	 * A class that handles many operations regarding PNG files.
 	 * @param raw The raw pixel values of the PNG, this may be left blank to create a white image.
-	 * If the length of these pixel values does not match the expected length of a RGBA image with the specified dimensions.
-	 * Then the first 4 entries will be used as a color to apply to the entire image (missing values will be interpreted as 255).
+	 * If the length of these pixel values is less than what is required,
+	 * then the first 4 entries will be used as a color to apply to the entire image (missing values will be interpreted as 255).
 	 * @param width The width of the PNG. (Default - 100)
 	 * @param height The height of the PNG. (Default - 100)
 	 */
 	constructor(raw?: Uint8Array, width?: number, height?: number) {
 		this.width = width ?? this.width;
 		this.height = height ?? this.height;
-		this.raw = raw ?? this.raw;
-		if (!new PNGFormatterTo(this).canBeRGBA()) {
+		this.raw = (raw ?? this.raw).subarray(0, this.width * this.height * 4);
+		if (this.raw.length < this.width * this.height * 4) {
 			const color = new Uint8Array(4).fill(255);
 			color.set(this.raw.slice(0, 4));
 			this.draw.generateBlank(this.width, this.height, color);
@@ -138,17 +138,14 @@ export class PNG {
 		if (typeof scale === "number") {
 			scale = [scale, scale] as Vec2;
 		}
-		const newDims = (type === "factor" ? [scale[0] * this.height, scale[1] * this.width] : scale).map(x => Math.floor(x)),
+		const newDims = (type === "factor" ? [scale[0] * this.width, scale[1] * this.height] : scale).map(x => Math.floor(x)),
 			factors = ArrOp.divide([this.width, this.height], newDims),
 			output = new Uint8Array(newDims[0] * newDims[1] * 4);
 
 		for (let row = 0; row < newDims[0]; row++) {
 			for (let col = 0; col < newDims[1]; col++) {
-				const oldIndex = 4 * (Math.round(row * factors[0]) * this.width + Math.round(col * factors[1]));
-				output[(row * newDims[1] + col) * 4] = this.raw[oldIndex];
-				output[(row * newDims[1] + col) * 4 + 1] = this.raw[oldIndex + 1];
-				output[(row * newDims[1] + col) * 4 + 2] = this.raw[oldIndex + 2];
-				output[(row * newDims[1] + col) * 4 + 3] = this.raw[oldIndex + 3];
+				const nearest = this.getPixel(Math.floor(col * factors[0]), Math.floor(row * factors[1]));
+				output.set(nearest, (row * newDims[0] + col) * 4);
 			}
 		}
 
