@@ -1,4 +1,4 @@
-import { compare, concatUint8 } from "@aurellis/helpers";
+import { compare, concatTypedArray } from "@aurellis/helpers";
 import { type BitDepth, type ColorFormat, formatChannelCounts, pngColorFormats, type DecodeResult } from "../types.ts";
 
 /**
@@ -66,7 +66,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 	}
 
 	// Join IDAT data
-	const compressedData = concatUint8(idatChunks);
+	const compressedData = concatTypedArray(...idatChunks);
 
 	// Decompress with DecompressionStream
 	const stream = new DecompressionStream("deflate");

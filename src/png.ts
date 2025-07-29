@@ -7,6 +7,9 @@ import { PNGFilter } from "./filters.ts";
 import { gammaCorrect, packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "./format.ts";
 import type { BitDepth, ColorFormat, DecodeResult } from "./types.ts";
 
+/**
+ * A class that handles many operations regarding PNG files.
+ */
 export class PNG {
 	/**
 	 * Read and import an image file. If the image file uses transparency with a trns chunk, this will not be imported.
@@ -36,6 +39,9 @@ export class PNG {
 		return this.fromDecode(dec, entryName);
 	}
 
+	/**
+	 * Create a PNG from a decoded result, this handles formatting and bit packing.
+	 */
 	private static fromDecode(dec: DecodeResult, imageName: string): PNG {
 		dec.raw = unpackBits(dec.raw, dec.width, dec.bitDepth, dec.colorFormat !== "Indexed");
 		const formatter = new PNGFormatterFrom(dec);
@@ -82,8 +88,17 @@ export class PNG {
 		return new PNGDraw(this);
 	}
 
+	/**
+	 * The raw RGBA pixel values.
+	 */
 	raw: Uint8Array = new Uint8Array();
+	/**
+	 * The width (in pixels) of the image.
+	 */
 	width = 100;
+	/**
+	 * The height (in pixels) of the image.
+	 */
 	height = 100;
 	/**
 	 * A class that handles many operations regarding PNG files.
@@ -197,6 +212,10 @@ export class PNG {
 		return this;
 	}
 
+	/**
+	 * Determine the minimum valid bitdepth for indexed color.
+	 * This is based off the length of the palette.
+	 */
 	private paletteBitDepth(len: number): BitDepth {
 		len /= 3;
 		if (len <= 2) {
@@ -259,13 +278,13 @@ export class PNG {
 
 		// Actually do formatting and bitdepth assignment.
 		let bitDepth: BitDepth = 8;
-		if (colorFormat == "Indexed" && plte.length) {
+		if (colorFormat === "Indexed" && plte.length) {
 			bitDepth = this.paletteBitDepth(plte.length);
 		} else {
-			if (colorFormat == "Indexed") {
+			if (colorFormat === "Indexed") {
 				[plte, outRaw] = formatter.toIndexed();
 				bitDepth = this.paletteBitDepth(plte.length);
-			} else if (colorFormat == "GrayScale") {
+			} else if (colorFormat === "GrayScale") {
 				bitDepth = grayScaleBitDepth;
 				outRaw = formatter.toGrayScale();
 			} else {
@@ -277,7 +296,7 @@ export class PNG {
 		outRaw = packBits(outRaw, this.width, bitDepth, colorFormat !== "Indexed");
 
 		let bin: Uint8Array;
-		if (colorFormat == "Indexed") {
+		if (colorFormat === "Indexed") {
 			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat, palette: plte, bitDepth: bitDepth });
 		} else {
 			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });

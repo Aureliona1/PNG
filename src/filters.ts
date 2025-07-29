@@ -1,11 +1,20 @@
 import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, type Easing, lerp, type Vec2, type Vec4 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 
+/**
+ * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
+ */
 export class PNGFilter {
+	/**
+	 * Convert an absolute index into a coordinate.
+	 */
 	private i2c(i: number): Vec2 {
 		return [Math.floor(Math.floor(i / 4) / this.src.width), Math.floor(i / 4) % this.src.width];
 	}
-	private getNeighbours(i: number, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical") {
+	/**
+	 * Get the neighbours of a pixel at an index.
+	 */
+	private getNeighbours(i: number, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical"): Uint8Array {
 		const coord = this.i2c(i);
 		const n = new Uint8Array(neighbourhood === "Moore" ? 32 : neighbourhood === "Von-Neumann" ? 16 : 8);
 		switch (neighbourhood) {

@@ -214,7 +214,7 @@ export class PNGFormatterFrom {
 	 */
 	fromIndexed(): Uint8Array {
 		const newRaw = new Uint8Array(this.src.raw.length * 4);
-		if (this.src.colorFormat == "Indexed") {
+		if (this.src.colorFormat === "Indexed") {
 			for (let i = 0; i < newRaw.length; i++) {
 				newRaw[i] = (i + 1) % 4 ? this.src.palette[this.src.raw[Math.floor(i / 4)] * 3 + (i % 4)] : 255;
 			}
