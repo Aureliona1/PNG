@@ -38,9 +38,7 @@ The end of each image's section in the datachunk will be calculated as byteStart
 Each dictionary entry takes 14 + nameLength bytes.
 
 datachunk: Uint8Array
-
 */
-
 export class TIC {
 	/**
 	 * Get the length of an entry in the datachunk.
