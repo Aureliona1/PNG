@@ -3,7 +3,7 @@ import { PNGFormatterTo, packBits } from "../format.ts";
 import type { PNG } from "../png.ts";
 import { ticColorFormats, type BitDepth, type DecodeResult, type TicColorFormat, type TicDictEntry } from "../types.ts";
 
-/*
+/**
 Terrible Image Cache
 
 This format begins with a dictionary which references the metadata of all contained images.
