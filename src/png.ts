@@ -136,7 +136,7 @@ export class PNG {
 	 * @param y The row (from the top) of the pixel.
 	 * @param color The [red, green, blue, alpha?] to set the pixel to (0 - 255). This can also stretch over multiple colors to modify multiple pixels.
 	 */
-	setPixel(x: number, y: number, color: ArrayLike<number>): PNG {
+	setPixel(x: number, y: number, color: ArrayLike<number>): this {
 		const index = (clamp(y, [0, this.height]) * this.width + clamp(x, [0, this.width])) * 4;
 		for (let i = 0; i < color.length && index + i < this.raw.length; i++) {
 			this.raw[index + i] = color[i];
@@ -149,7 +149,7 @@ export class PNG {
 	 * @param type Whether to scale as a factor (0-1) of the original image dimensions. Or by absolute pixels.
 	 * @param scale The [width, height] of the new image.
 	 */
-	scale(type: "px" | "factor", scale: Vec2 | number): PNG {
+	scale(type: "px" | "factor", scale: Vec2 | number): this {
 		if (typeof scale === "number") {
 			scale = [scale, scale] as Vec2;
 		}
@@ -177,7 +177,7 @@ export class PNG {
 	 * @param width The width of the resulting image.
 	 * @param height The height of the resulting image.
 	 */
-	crop(x = 0, y = 0, width = this.width, height = this.height): PNG {
+	crop(x = 0, y = 0, width = this.width, height = this.height): this {
 		x = clamp(x, [0, this.width - 1]);
 		y = clamp(y, [0, this.height - 1]);
 		width = clamp(width, [1, this.width - x]);
@@ -199,7 +199,7 @@ export class PNG {
 	 * @param affectAlpha Whether or not to affect alpha values.
 	 * @param x The function.
 	 */
-	function(affectAlpha: boolean, func: (index: number, array: Uint8Array) => number): PNG {
+	function(affectAlpha: boolean, func: (index: number, array: Uint8Array) => number): this {
 		if (!affectAlpha) {
 			for (let i = 0; i < this.raw.length; i += (i + 2) % 4 ? 1 : 2) {
 				this.raw[i] = func(i, this.raw);
@@ -236,7 +236,7 @@ export class PNG {
 	 * @param colorFormat Optional color format. If this is left blank, the image will automatically be reduced to the most optimal color format for filesize.
 	 * @param grayScaleBitDepth The bitdepth of the image if it able to be represented as grayscale, this does nothing if the resulting image is not grayscale.
 	 */
-	async writeFile(path: string = "im", colorFormat?: ColorFormat, grayScaleBitDepth: BitDepth = 8): Promise<PNG> {
+	async writeFile(path: string = "im", colorFormat?: ColorFormat, grayScaleBitDepth: BitDepth = 8): Promise<this> {
 		path = /.*\.png$/.test(path) ? path : path + ".png";
 		const formatter = new PNGFormatterTo(this);
 		// Quick validation
@@ -313,7 +313,8 @@ export class PNG {
 	 * @param entryName The name that this image will have in the cache.
 	 * @param bitDepth The bit depth of the image, lower values will reduce the size of the cache file but also reduce image quality.
 	 */
-	writeCache(entryName = "", bitDepth: BitDepth = 8) {
+	writeCache(entryName = "", bitDepth: BitDepth = 8): this {
 		PNG.cache.write(entryName, this, bitDepth);
+		return this;
 	}
 }

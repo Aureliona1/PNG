@@ -16,7 +16,7 @@ export class PNGDraw {
 	 * @param height The resulting height of the image.
 	 * @param color The color [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	generateBlank(width = this.src.width, height = this.src.height, color: ArrayLike<number> = [255, 255, 255, 255]): PNGDraw {
+	generateBlank(width = this.src.width, height = this.src.height, color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		this.src.raw = new Uint8Array(width * height * 4).map((_v, i) => color[i % 4]);
 		this.src.width = width;
 		this.src.height = height;
@@ -28,7 +28,7 @@ export class PNGDraw {
 	 * @param end The end coord.
 	 * @param color The color [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	line(start: Vec2, end: Vec2, thickness = 1, color: ArrayLike<number> = [255, 255, 255, 255]): PNGDraw {
+	line(start: Vec2, end: Vec2, thickness = 1, color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		start = start.map(x => Math.floor(x)) as Vec2;
 		end = end.map(x => Math.floor(x)) as Vec2;
 		thickness--;
@@ -68,7 +68,7 @@ export class PNGDraw {
 	 * @param seed The seed for the noise generator.
 	 * @param byColor Set this to true to run the noise over the image by each color instead of all color channels consecutively. (Default - false)
 	 */
-	noisify(width = this.src.width, height = this.src.height, z = 0, scale = 1, seed: number = Math.random(), byColor = false): PNGDraw {
+	noisify(width = this.src.width, height = this.src.height, z = 0, scale = 1, seed: number = Math.random(), byColor = false): this {
 		this.generateBlank(width, height);
 		if (byColor) {
 			let noise = makeNoise3D(seed * 3276.123);
@@ -98,7 +98,7 @@ export class PNGDraw {
 	 * @param height The resulting height of the image.
 	 * @param fadeWhite Optional, fade more common pixels to white.
 	 */
-	fractalPolygon(corners = 3, color: Vec4 = [255, 0, 0, 255], width = this.src.width, height = this.src.height, fadeWhite = false): PNGDraw {
+	fractalPolygon(corners = 3, color: Vec4 = [255, 0, 0, 255], width = this.src.width, height = this.src.height, fadeWhite = false): this {
 		// Create black bg
 		this.generateBlank(width, height, [0, 0, 0, 255]);
 
@@ -154,7 +154,7 @@ export class PNGDraw {
 	 * @param dims The dimensions of the diagram.
 	 * @param pointCount The number of points in the diagram.
 	 */
-	voronoiDiagram(pointCount = 10, width = this.src.width, height = this.src.height): PNGDraw {
+	voronoiDiagram(pointCount = 10, width = this.src.width, height = this.src.height): this {
 		const maxDist = distance([width, height], [0, 0]);
 		this.generateBlank(width, height);
 		const points = Array(pointCount)

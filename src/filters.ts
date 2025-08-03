@@ -53,7 +53,7 @@ export class PNGFilter {
 	 * Over or under expose the image.
 	 * @param factor The multiplier to expose the image to (1 - no effect).
 	 */
-	exposure(factor: number): PNGFilter {
+	exposure(factor: number): this {
 		this.src.function(false, (i, a) => clamp(a[i] * factor, [0, 255]));
 		return this;
 	}
@@ -63,7 +63,7 @@ export class PNGFilter {
 	 * @param satFac Saturation multiplier. (Default - 1, no effect).
 	 * @param valFac Value multiplier. (Default - 1, no effect).
 	 */
-	hsv(hueShift: number, satFac = 1, valFac = 1): PNGFilter {
+	hsv(hueShift: number, satFac = 1, valFac = 1): this {
 		for (let i = 0; i < this.src.raw.length / 4; i++) {
 			const hsv = byteRgbToHsv(this.src.raw.subarray(i * 4, i * 4 + 4));
 			hsv[0] = (hsv[0] + hueShift * 255) % 255;
@@ -79,7 +79,7 @@ export class PNGFilter {
 	 * @param factor The contrast multiplier, 1 has no effect on the image.
 	 * @param thresh Value from 0 to 1 (inclusive). Pixels darker than this will become darker when factor > 1, pixels lighter than this will get lighter with factor > 1.
 	 */
-	contrast(factor: number, thresh = 0.5): PNGFilter {
+	contrast(factor: number, thresh = 0.5): this {
 		this.src.function(false, (i, a) => this.cf(a[i] / 255, factor, thresh) * 255);
 		return this;
 	}
@@ -94,7 +94,7 @@ export class PNGFilter {
 	 * - Von-Neumann - Combines horizontal and vertical. (Medium)
 	 * - Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
 	 */
-	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): PNGFilter {
+	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): this {
 		const sumEvery = (arr: Uint8Array, start: number, skip: number) => {
 			let sum = 0;
 			for (let i = start; i < arr.length; i += skip) {
@@ -123,7 +123,7 @@ export class PNGFilter {
 	 * @param colors The number of available colors to use.
 	 * @param dither Whether to apply dithering to the quantised image (Default - false).
 	 */
-	quantise(colors: number, dither = false): PNGFilter {
+	quantise(colors: number, dither = false): this {
 		const q = (i: number) => Math.round(i * colors) / colors;
 		if (dither) {
 			this.src.raw = new Uint8Array(
@@ -157,7 +157,7 @@ export class PNGFilter {
 	 * @param contrast The contrast factor to add over the image (Default - 5).
 	 * @param contrastThresh The threshold to apply contrast to (Default - 0.05).
 	 */
-	edgeDetect(width = 1, contrast = 5, contrastThresh = 0.05): PNGFilter {
+	edgeDetect(width = 1, contrast = 5, contrastThresh = 0.05): this {
 		this.src.function(false, (i, arr) => {
 			const val = Math.min(
 				Math.abs(i < this.src.width * 4 * width ? 255 : arr[i] - arr[i - this.src.width * 4 * width]), // Up
@@ -177,7 +177,7 @@ export class PNGFilter {
 	 * If amount is negative, the image will go from full bleed at the top to no bleed at the bottom (i.e,. reversed).
 	 * @param progressionEasing Optional easing to add to a progressive bleed.
 	 */
-	bleed(amount: number, progressive = false, progressionEasing?: Easing): PNGFilter {
+	bleed(amount: number, progressive = false, progressionEasing?: Easing): this {
 		for (let i = 0; i < this.src.raw.length / 4; i++) {
 			if (Math.random() < lerp(0, 1, lerp(progressive ? (amount >= 0 ? 0 : 1) : amount, progressive ? (amount > 0 ? 1 : 0) : amount, lerp(0, 1, i / this.src.raw.length, progressionEasing), "easeOutExpo"), "easeOutCirc")) {
 				if (i > this.src.width) {
@@ -193,7 +193,7 @@ export class PNGFilter {
 	 * Apply tint effect to image by over/under exposing color channels.
 	 * @param color The color to tint the image. [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	tint(color: ArrayLike<number> = [255, 255, 255, 255]): PNGFilter {
+	tint(color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
 			this.src.raw[i] = clamp((this.src.raw[i] * (color[0] ?? 255)) / 255, [0, 255]);
 			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] * (color[1] ?? 255)) / 255, [0, 255]);
@@ -206,7 +206,7 @@ export class PNGFilter {
 	 * Remove potential tints on the image by reversing tint function. This will not work if the original tint color contains a 0.
 	 * @param color The color to attempt to untint from. [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	unTint(color: ArrayLike<number> = [255, 255, 255, 255]): PNGFilter {
+	unTint(color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
 			this.src.raw[i] = clamp((this.src.raw[i] / (color[0] ?? 255)) * 255, [0, 255]);
 			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] / (color[1] ?? 255)) * 255, [0, 255]);
@@ -221,7 +221,7 @@ export class PNGFilter {
 	 * @param g The green offset (integer value in pixels), (Default - 2).
 	 * @param b The blue offset (integer value in pixels), (Default - 3).
 	 */
-	chrAb(r = 1, g = 2, b = 3): PNGFilter {
+	chrAb(r = 1, g = 2, b = 3): this {
 		this.src.function(false, (i, a) => {
 			if (i % (this.src.width * 4) > Math.max(r, g, b) * 4) {
 				if (i % 4 === 0) {
@@ -243,7 +243,7 @@ export class PNGFilter {
 	 * @param img The image to overlay.
 	 * @param factor The factor (0-1) of the new image.
 	 */
-	mixImage(img: PNG, factor = 0.5): PNGFilter {
+	mixImage(img: PNG, factor = 0.5): this {
 		for (let row = 0; row < (img.height > this.src.height ? this.src.height : img.height); row++) {
 			const srcRowData = this.src.raw.subarray(row * this.src.width * 4, (row + 1) * this.src.width * 4);
 			srcRowData.set(ArrOp.lerp(srcRowData, img.raw.subarray(row * img.width * 4, (row + 1) * img.width * 4), factor));
@@ -255,7 +255,7 @@ export class PNGFilter {
 	 * @param color The color to overlay (gamma rgb 0 - 255).
 	 * @param factor The factor (0-1) of the fade between colors.
 	 */
-	mixColor(color: Vec4 = [255, 255, 255, 255], factor = 0.5): PNGFilter {
+	mixColor(color: Vec4 = [255, 255, 255, 255], factor = 0.5): this {
 		this.src.raw = this.src.raw.map((x, i) => Math.round(lerp(x, color[i % 4], factor)));
 		return this;
 	}
