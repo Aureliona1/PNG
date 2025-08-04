@@ -64,10 +64,6 @@ export class PNG {
 
 	/**
 	 * Global PNG cache wrapper.
-	 *
-	 * {@link PNG.cache.read} is the same as {@link PNG.fromCache}.
-	 *
-	 * {@link PNG.cache.write} is the same as {@link this.writeCache}.
 	 */
 	static get cache(): PNGCache {
 		return PNG._cache;
