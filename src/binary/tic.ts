@@ -53,7 +53,7 @@ export class TIC {
 	 * @returns Decoded tic data.
 	 */
 	static from(raw: Uint8Array): TIC {
-		const view = new DataView(raw.buffer);
+		const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
 		const dictLength = raw.length >= 4 ? view.getUint32(0) : 0;
 		const output = new TIC(dictLength, new Map(), raw.subarray(dictLength + 4));
 
