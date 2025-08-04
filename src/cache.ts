@@ -3,6 +3,9 @@ import type { PNG } from "./png.ts";
 import type { BitDepth, DecodeResult } from "./types.ts";
 import { TIC } from "./binary/tic.ts";
 
+/**
+ * Abstract wrapper for TIC cache files, this class should only be constructed for a single TIC file.
+ */
 export class PNGCache {
 	private readFile() {
 		if (pathCanBeAccessed(this.fileName)) {
