@@ -41,6 +41,14 @@ datachunk: Uint8Array
 */
 export class TIC {
 	/**
+	 * Base length of a dict entry with a 0-length name.
+	 */
+	private static DICT_ENTRY_BASE_LENGTH = 14;
+	/**
+	 * Maximum name length supported by the dict.
+	 */
+	private static DICT_NAME_MAX_LENGTH = 256;
+	/**
 	 * Get the length of an entry in the datachunk.
 	 */
 	private static entryDataLength(entry: TicDictEntry) {
@@ -101,16 +109,16 @@ export class TIC {
 		this.dict.forEach(entry => {
 			let valid = true;
 			// Base entry length
-			dictLength += 14;
+			dictLength += TIC.DICT_ENTRY_BASE_LENGTH;
 
 			// Validate name length
 			const encodedName = new TextEncoder().encode(entry.name);
 			entry.nameLength = encodedName.length;
-			if (entry.nameLength > 256) {
-				clog(`The image name ${entry.name} exceeds the maximum length (256), it will be shortened...`, "Warning", "TIC");
-				entry.name = new TextDecoder().decode(encodedName.slice(0, 256));
+			if (entry.nameLength > TIC.DICT_NAME_MAX_LENGTH) {
+				clog(`The image name ${entry.name} exceeds the maximum length (${TIC.DICT_NAME_MAX_LENGTH}), it will be shortened...`, "Warning", "TIC");
+				entry.name = new TextDecoder().decode(encodedName.slice(0, TIC.DICT_NAME_MAX_LENGTH));
 				clog(`The image has been renamed to ${entry.name}...`, "Log", "TIC");
-				entry.nameLength = 256;
+				entry.nameLength = TIC.DICT_NAME_MAX_LENGTH;
 			}
 			dictLength += entry.nameLength;
 
@@ -144,7 +152,7 @@ export class TIC {
 		if (this.dict.has(entryName)) {
 			const entry = this.dict.get(entryName)!;
 			const nameLength = new TextEncoder().encode(entry.name).length;
-			this.dictLength -= 14 + nameLength;
+			this.dictLength -= TIC.DICT_ENTRY_BASE_LENGTH + nameLength;
 			const dataLength = TIC.entryDataLength(entry);
 			this.dataChunk = concatTypedArray(this.dataChunk.subarray(0, entry.byteOffset), this.dataChunk.subarray(entry.byteOffset + dataLength));
 			this.dict.forEach(e => {
@@ -192,7 +200,7 @@ export class TIC {
 			nameLength: new TextEncoder().encode(entryName).length,
 			name: entryName
 		};
-		this.dictLength += 14 + thisEntry.nameLength;
+		this.dictLength += TIC.DICT_ENTRY_BASE_LENGTH + thisEntry.nameLength;
 		this.dict.set(entryName, thisEntry);
 		this.dataChunk = concatTypedArray(this.dataChunk, encodedRaw);
 	}
