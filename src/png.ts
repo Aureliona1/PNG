@@ -1,4 +1,4 @@
-import { ArrOp, clamp, clog, ensureFile, type Vec2 } from "@aurellis/helpers";
+import { ArrOp, clamp, clog, type Vec2 } from "@aurellis/helpers";
 import { decode } from "./binary/decode.ts";
 import { encode } from "./binary/encode.ts";
 import { PNGCache } from "./cache.ts";
@@ -298,7 +298,6 @@ export class PNG {
 			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });
 		}
 
-		await ensureFile(path);
 		await Deno.writeFile(path, bin);
 
 		return this;
