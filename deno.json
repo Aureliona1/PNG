@@ -29,7 +29,7 @@
     }
   },
   "imports": {
-    "@aurellis/helpers": "jsr:@aurellis/helpers@^1.2.4",
+    "@aurellis/helpers": "jsr:@aurellis/helpers@^1.4.0",
     "@deno-library/compress": "jsr:@deno-library/compress@^0.5.6",
     "@deno-library/crc32": "jsr:@deno-library/crc32@^1.0.2"
   },

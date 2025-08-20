@@ -216,26 +216,30 @@ export class PNGFilter {
 		return this;
 	}
 	/**
-	 * Add chromatic abberation to your image, all offsets are to the left. Larger images will typically need higher values to see a similar effect.
+	 * Add chromatic abberation to your image, all offsets are in pixels radially from the center. Larger images will typically need higher values to see a similar effect.
 	 * @param r The red offset (integer value in pixels), (Default - 1).
 	 * @param g The green offset (integer value in pixels), (Default - 2).
 	 * @param b The blue offset (integer value in pixels), (Default - 3).
 	 */
 	chrAb(r = 1, g = 2, b = 3): this {
-		this.src.function(false, (i, a) => {
-			if (i % (this.src.width * 4) > Math.max(r, g, b) * 4) {
-				if (i % 4 === 0) {
-					a[i - Math.floor(r) * 4] = a[i];
-				}
-				if (i % 4 === 1) {
-					a[i - Math.floor(g) * 4] = a[i];
-				}
-				if (i % 4 === 2) {
-					a[i - Math.floor(b) * 4] = a[i];
-				}
+		const oldRaw = new Uint8Array(this.src.raw);
+		const getOldIndex = (x: number, y: number, channel: "R" | "G" | "B") => {
+			const inputOffset = channel === "R" ? r : channel === "G" ? g : b;
+			const channelIndex = channel === "G" ? 1 : channel === "B" ? 2 : 0;
+			const pixel = [Math.round(x < this.src.width / 2 ? x + inputOffset : x - inputOffset), Math.round(y < this.src.height / 2 ? y + inputOffset : y - inputOffset)];
+			return (pixel[1] * this.src.width + pixel[0]) * 4 + channelIndex;
+		};
+		const getNewIndex = (x: number, y: number, channel: "R" | "G" | "B") => {
+			const channelIndex = channel === "R" ? 0 : channel === "G" ? 1 : 2;
+			return (y * this.src.width + x) * 4 + channelIndex;
+		};
+		for (let x = 0; x < this.src.width; x++) {
+			for (let y = 0; y < this.src.height; y++) {
+				this.src.raw[getNewIndex(x, y, "R")] = oldRaw[getOldIndex(x, y, "R")];
+				this.src.raw[getNewIndex(x, y, "G")] = oldRaw[getOldIndex(x, y, "G")];
+				this.src.raw[getNewIndex(x, y, "B")] = oldRaw[getOldIndex(x, y, "B")];
 			}
-			return a[i];
-		});
+		}
 		return this;
 	}
 	/**
