@@ -1,4 +1,4 @@
-import { clog, compare, concatTypedArray, random } from "@aurellis/helpers";
+import { compare, concatTypedArrays, random } from "@aurellis/helpers";
 import { packBits, PNGFormatterFrom, PNGFormatterTo, unpackBits } from "../src/format.ts";
 import { PNG } from "../src/png.ts";
 import { DecodeResult } from "../src/types.ts";
@@ -118,7 +118,7 @@ Deno.test({
 	fn: () => {
 		let raw = new Uint8Array([1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255]);
 		let im = new PNG(raw, 2, 2);
-		im.raw = concatTypedArray(im.raw, new Uint8Array([1, 0, 1]));
+		im.raw = concatTypedArrays(im.raw, new Uint8Array([1, 0, 1]));
 		assert(!new PNGFormatterTo(im).canBeRGBA());
 		im = new PNG(undefined, 1, 1);
 		im.raw = new Uint8Array([0, 0, 0]);

@@ -34,8 +34,8 @@ export class PNG {
 	 * @param entryName The name of the image in the cache.
 	 * @returns The cached image, or a blank image if the image isn't in the cache.
 	 */
-	static fromCache(entryName: string): PNG {
-		const dec = PNG.cache.read(entryName);
+	static async fromCache(entryName: string): Promise<PNG> {
+		const dec = await PNG.cache.read(entryName);
 		return this.fromDecode(dec, entryName);
 	}
 
@@ -298,7 +298,7 @@ export class PNG {
 			bin = encode({ raw: outRaw, width: this.width, height: this.height, colorFormat: colorFormat!, bitDepth: bitDepth });
 		}
 
-		ensureFile(path);
+		await ensureFile(path);
 		await Deno.writeFile(path, bin);
 
 		return this;
@@ -309,8 +309,8 @@ export class PNG {
 	 * @param entryName The name that this image will have in the cache.
 	 * @param bitDepth The bit depth of the image, lower values will reduce the size of the cache file but also reduce image quality.
 	 */
-	writeCache(entryName = "", bitDepth: BitDepth = 8): this {
-		PNG.cache.write(entryName, this, bitDepth);
+	async writeCache(entryName = "", bitDepth: BitDepth = 8): Promise<this> {
+		await PNG.cache.write(entryName, this, bitDepth);
 		return this;
 	}
 }

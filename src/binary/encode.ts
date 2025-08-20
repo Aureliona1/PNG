@@ -1,4 +1,4 @@
-import { concatTypedArray } from "@aurellis/helpers";
+import { concatTypedArrays } from "@aurellis/helpers";
 import { deflate } from "@deno-library/compress";
 import { crc32 } from "@deno-library/crc32";
 import { formatChannelCounts, pngColorFormats, type ColorFormat, type EncodeOpts } from "../types.ts";
@@ -81,10 +81,10 @@ export function encode(opts: EncodeOpts): Uint8Array {
 		scanlines.push(scanline);
 	}
 
-	const rawScanlines = concatTypedArray(...scanlines);
+	const rawScanlines = concatTypedArrays(...scanlines);
 	const compressed = deflate(rawScanlines);
 	chunks.push(writeChunk("IDAT", compressed));
 	chunks.push(writeChunk("IEND", new Uint8Array()));
 
-	return new Uint8Array(concatTypedArray(...chunks));
+	return new Uint8Array(concatTypedArrays(...chunks));
 }

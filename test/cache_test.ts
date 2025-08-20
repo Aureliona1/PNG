@@ -1,4 +1,4 @@
-import { Cache, clog, compare, pathCanBeAccessed } from "@aurellis/helpers";
+import { Cache, clog, compare, pathAccessibleSync } from "@aurellis/helpers";
 import { PNG } from "@aurellis/png";
 import { TIC } from "../src/binary/tic.ts";
 import { PNGCache } from "../src/cache.ts";
@@ -7,9 +7,9 @@ import { assert } from "../src/vendor/assert.ts";
 
 const sc = new Cache("test/output/RGBA8.png.json");
 const sampleImage = {
-	width: sc.read<number>("width"),
-	height: sc.read<number>("height"),
-	raw: sc.read<number[]>("RGBA")
+	width: sc.readSync<number>("width"),
+	height: sc.readSync<number>("height"),
+	raw: sc.readSync<number[]>("RGBA")
 };
 
 /**
@@ -141,7 +141,7 @@ Deno.test({
 	fn: () => {
 		Deno.writeFileSync(cacheFileName, generateSampleTIC());
 		const c = new PNGCache(cacheFileName);
-		const dec = c.read("test");
+		const dec = c.readSync("test");
 		assert(dec.bitDepth === 8);
 		assert(dec.colorFormat === "RGBA");
 		assert(dec.height === sampleImage.height);
@@ -171,8 +171,8 @@ Deno.test({
 	fn: () => {
 		Deno.writeFileSync(cacheFileName, generateSampleTIC());
 		const c = new PNGCache(cacheFileName);
-		c.clear();
-		assert(!pathCanBeAccessed(cacheFileName));
+		c.clearSync();
+		assert(!pathAccessibleSync(cacheFileName));
 		assert(!c.entries.length);
 	}
 });

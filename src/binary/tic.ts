@@ -1,4 +1,4 @@
-import { clog, concatTypedArray } from "@aurellis/helpers";
+import { clog, concatTypedArrays } from "@aurellis/helpers";
 import { PNGFormatterTo, packBits } from "../format.ts";
 import type { PNG } from "../png.ts";
 import { ticColorFormats, type BitDepth, type DecodeResult, type TicColorFormat, type TicDictEntry } from "../types.ts";
@@ -154,7 +154,7 @@ export class TIC {
 			const nameLength = new TextEncoder().encode(entry.name).length;
 			this.dictLength -= TIC.DICT_ENTRY_BASE_LENGTH + nameLength;
 			const dataLength = TIC.entryDataLength(entry);
-			this.dataChunk = concatTypedArray(this.dataChunk.subarray(0, entry.byteOffset), this.dataChunk.subarray(entry.byteOffset + dataLength));
+			this.dataChunk = concatTypedArrays(this.dataChunk.subarray(0, entry.byteOffset), this.dataChunk.subarray(entry.byteOffset + dataLength));
 			this.dict.forEach(e => {
 				if (e.byteOffset > entry.byteOffset) {
 					e.byteOffset -= dataLength;
@@ -202,7 +202,7 @@ export class TIC {
 		};
 		this.dictLength += TIC.DICT_ENTRY_BASE_LENGTH + thisEntry.nameLength;
 		this.dict.set(entryName, thisEntry);
-		this.dataChunk = concatTypedArray(this.dataChunk, encodedRaw);
+		this.dataChunk = concatTypedArrays(this.dataChunk, encodedRaw);
 	}
 
 	/**

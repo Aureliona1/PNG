@@ -8,9 +8,9 @@ function generateDecodeTest(imageName: string) {
 	return async () => {
 		const comp = new Cache(`test/output/${imageName}.json`);
 		const im = await PNG.fromFile(`test/input/${imageName}`);
-		assert(compare(comp.read<number>("width"), im.width));
-		assert(compare(comp.read<number>("height"), im.height));
-		assert(compare(comp.read<number[]>("RGBA"), Array.from(im.raw)));
+		assert(compare(await comp.read<number>("width"), im.width));
+		assert(compare(await comp.read<number>("height"), im.height));
+		assert(compare(await comp.read<number[]>("RGBA"), Array.from(im.raw)));
 	};
 }
 
@@ -73,9 +73,9 @@ function generateEncodeTest(format: ColorFormat, bitDepth: BitDepth) {
 	return async () => {
 		const im = new PNG();
 		const cache = new Cache(`test/output/${format}${bitDepth}.png.json`);
-		im.width = cache.read<number>("width");
-		im.height = cache.read<number>("height");
-		im.raw = new Uint8Array(cache.read<number[]>("RGBA"));
+		im.width = await cache.read<number>("width");
+		im.height = await cache.read<number>("height");
+		im.raw = new Uint8Array(await cache.read<number[]>("RGBA"));
 		await im.writeFile(`test/output/${format}${bitDepth}.png`, format, bitDepth);
 		const im2 = await PNG.fromFile(`test/output/${format}${bitDepth}.png`);
 		assert(compare(im.raw, im2.raw));
