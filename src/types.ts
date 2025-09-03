@@ -78,16 +78,18 @@ export type EncodeOpts = {
 	  }
 );
 
-/**
- * A map of the available color formats for TIC files, and their respective numeric ID.
- * Doubles as a channel count map.
- */
-export const ticColorFormats = new TwoWayMap({
+const ticColorFormatsSrc = {
 	GrayScale: 1,
 	GrayScaleAlpha: 2,
 	RGB: 3,
 	RGBA: 4
-});
+} as const;
+
+/**
+ * A map of the available color formats for TIC files, and their respective numeric ID.
+ * Doubles as a channel count map.
+ */
+export const ticColorFormats: TwoWayMap<keyof typeof ticColorFormatsSrc, (typeof ticColorFormatsSrc)[keyof typeof ticColorFormatsSrc]> = new TwoWayMap(ticColorFormatsSrc);
 
 /**
  * TIC color format names.
