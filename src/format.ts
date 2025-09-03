@@ -2,6 +2,9 @@ import { clamp, mapRange } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 import { formatChannelCounts, type BitDepth, type DecodeResult } from "./types.ts";
 
+/**
+ * A utility class to format a PNG from RGBA to another format.
+ */
 export class PNGFormatterTo {
 	/**
 	 * Convert a 24-bit RGB color into a 24-bit integer for indexing in the color palette.
@@ -161,6 +164,9 @@ export class PNGFormatterTo {
 	}
 }
 
+/**
+ * Utility class to format a PNG from a color format into RGBA.
+ */
 export class PNGFormatterFrom {
 	/**
 	 * A utility class that converts pixel arrays from any supported format to RGBA.
@@ -173,7 +179,7 @@ export class PNGFormatterFrom {
 	 * Validate that the input pixel array length matches the expected length for this particular color format.
 	 * Also validates color indices for indexed color.
 	 */
-	isCorrectFormat() {
+	isCorrectFormat(): boolean {
 		if (this.src.colorFormat === "Indexed") {
 			let maxIndex = 0;
 			for (let i = 0; i < this.src.raw.length; i++) {

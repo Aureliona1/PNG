@@ -51,7 +51,7 @@ export class TIC {
 	/**
 	 * Get the length of an entry in the datachunk.
 	 */
-	private static entryDataLength(entry: TicDictEntry) {
+	private static entryDataLength(entry: TicDictEntry): number {
 		return Math.ceil((entry.width * entry.height * ticColorFormats.get(entry.colorFormat) * entry.bitDepth) / 8);
 	}
 
