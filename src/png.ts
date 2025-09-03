@@ -42,7 +42,7 @@ export class PNG {
 	/**
 	 * Create a PNG from a decoded result, this handles formatting and bit packing.
 	 */
-	private static fromDecode(dec: DecodeResult, imageName: string): PNG {
+	static fromDecode(dec: DecodeResult, imageName: string): PNG {
 		dec.raw = unpackBits(dec.raw, dec.width, dec.bitDepth, dec.colorFormat !== "Indexed");
 		const formatter = new PNGFormatterFrom(dec);
 		if (formatter.isCorrectFormat()) {
