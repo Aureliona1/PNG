@@ -156,10 +156,10 @@ Deno.test({
 	fn: () => {
 		const c = new PNGCache(cacheFileName);
 		const im = new PNG(new Uint8Array(sampleImage.raw), sampleImage.width, sampleImage.height);
-		c.write("test", im);
+		c.writeSync("test", im);
 		let raw = Deno.readFileSync(cacheFileName);
 		assert(compare(raw, generateSampleTIC()));
-		c.write("test");
+		c.writeSync("test");
 		raw = Deno.readFileSync(cacheFileName);
 		assert(compare(raw, new Uint8Array([0, 0, 0, 0])));
 		Deno.removeSync(cacheFileName);
