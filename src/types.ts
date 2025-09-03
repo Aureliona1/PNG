@@ -5,27 +5,31 @@ import { TwoWayMap } from "@aurellis/helpers";
  */
 export type BitDepth = 1 | 2 | 4 | 8;
 
-/**
- * A map of the number of channels for each PNG color format.
- */
-export const formatChannelCounts = new TwoWayMap({
+const formatChannelCountsSrc = {
 	Indexed: 1,
 	GrayScale: 1,
 	GrayScaleAlpha: 2,
 	RGB: 3,
 	RGBA: 4
-});
+} as const;
 
 /**
- * A map of the available color formats for PNG files, and their respective numeric ID.
+ * A map of the number of channels for each PNG color format.
  */
-export const pngColorFormats = new TwoWayMap({
+export const formatChannelCounts: TwoWayMap<keyof typeof formatChannelCountsSrc, (typeof formatChannelCountsSrc)[keyof typeof formatChannelCountsSrc]> = new TwoWayMap(formatChannelCountsSrc);
+
+const pngColorFormatsSrc = {
 	GrayScale: 0,
 	RGB: 2,
 	Indexed: 3,
 	GrayScaleAlpha: 4,
 	RGBA: 6
-});
+} as const;
+
+/**
+ * A map of the available color formats for PNG files, and their respective numeric ID.
+ */
+export const pngColorFormats: TwoWayMap<keyof typeof pngColorFormatsSrc, (typeof pngColorFormatsSrc)[keyof typeof pngColorFormatsSrc]> = new TwoWayMap(pngColorFormatsSrc);
 
 /**
  * PNG color format names.

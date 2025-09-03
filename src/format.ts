@@ -10,12 +10,12 @@ export class PNGFormatterTo {
 	 * Convert a 24-bit RGB color into a 24-bit integer for indexing in the color palette.
 	 * @param color The color to convert, all values after color[2] are ignored.
 	 */
-	static c2n = (color: Uint8Array) => (color[0] << 16) + (color[1] << 8) + color[2];
+	static c2n = (color: Uint8Array): number => (color[0] << 16) + (color[1] << 8) + color[2];
 	/**
 	 * Convert a 24-bit integer into an RGB color. Inverse of {@link PNGFormatterTo.c2n}.
 	 * @param n The number.
 	 */
-	static n2c = (n: number) => new Uint8Array([(n & (0xff << 16)) >> 16, (n & (0xff << 8)) >> 8, n & 0xff]);
+	static n2c = (n: number): Uint8Array => new Uint8Array([(n & (0xff << 16)) >> 16, (n & (0xff << 8)) >> 8, n & 0xff]);
 	private _indexedPalette: Map<number, number> = new Map();
 
 	/**
