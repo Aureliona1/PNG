@@ -296,7 +296,6 @@ export function unpackBits(bits: Uint8Array, rowWidth: number, currentBitDepth: 
 			if (normalise) {
 				value = mapRange(value, [0, mask], [0, 255]);
 			}
-
 			output[row * rowWidth + col] = value;
 		}
 	}

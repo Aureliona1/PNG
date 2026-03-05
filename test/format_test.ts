@@ -334,7 +334,7 @@ Deno.test({
 Deno.test({
 	name: "Unpack 1 bit",
 	fn: () => {
-		const raw = new Uint8Array([165]);
+		const raw = new Uint8Array([0b10100101]);
 		const unpacked = unpackBits(raw, 8, 1, false);
 		const normalised = unpackBits(raw, 8, 1);
 		assert(compare(unpacked, new Uint8Array([1, 0, 1, 0, 0, 1, 0, 1])));
@@ -345,9 +345,9 @@ Deno.test({
 Deno.test({
 	name: "Unpack 2 bits",
 	fn: () => {
-		const raw = new Uint8Array([165]);
-		const unpacked = unpackBits(raw, 8, 2, false);
-		const normalised = unpackBits(raw, 8, 2);
+		const raw = new Uint8Array([0b10100101]);
+		const unpacked = unpackBits(raw, 4, 2, false);
+		const normalised = unpackBits(raw, 4, 2);
 		assert(compare(unpacked, new Uint8Array([2, 2, 1, 1])));
 		assert(compare(normalised, new Uint8Array([170, 170, 85, 85])));
 	}
@@ -356,9 +356,9 @@ Deno.test({
 Deno.test({
 	name: "Unpack 4 bits",
 	fn: () => {
-		const raw = new Uint8Array([165]);
-		const unpacked = unpackBits(raw, 8, 4, false);
-		const normalised = unpackBits(raw, 8, 4);
+		const raw = new Uint8Array([0b10100101]);
+		const unpacked = unpackBits(raw, 2, 4, false);
+		const normalised = unpackBits(raw, 2, 4);
 		assert(compare(unpacked, new Uint8Array([10, 5])));
 		assert(compare(normalised, new Uint8Array([170, 85])));
 	}
