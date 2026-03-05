@@ -153,10 +153,11 @@ export class PNG {
 			factors = ArrOp.divide([this.width, this.height], newDims),
 			output = new Uint8Array(newDims[0] * newDims[1] * 4);
 
-		for (let row = 0; row < newDims[0]; row++) {
-			for (let col = 0; col < newDims[1]; col++) {
+		for (let row = 0; row < newDims[1]; row++) {
+			for (let col = 0; col < newDims[0]; col++) {
 				const nearest = this.getPixel(Math.floor(col * factors[0]), Math.floor(row * factors[1]));
-				output.set(nearest, (row * newDims[0] + col) * 4);
+				const index = (row * newDims[0] + col) * 4;
+				output.set(nearest, index);
 			}
 		}
 
