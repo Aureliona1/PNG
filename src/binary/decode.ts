@@ -71,7 +71,7 @@ export async function decode(image: Uint8Array): Promise<DecodeResult> {
 	// Decompress with DecompressionStream
 	const stream = new DecompressionStream("deflate");
 	const writer = stream.writable.getWriter();
-	writer.write(compressedData);
+	writer.write(compressedData.buffer as ArrayBuffer);
 	writer.close();
 	const decompressedBuffer = await new Response(stream.readable).arrayBuffer();
 	const decompressed = new Uint8Array(decompressedBuffer);

@@ -11,7 +11,7 @@ function compareIms(im1: PNG, im2: PNG) {
 Deno.test({
 	name: "Scale Up PX",
 	fn: async () => {
-		let small = (await PNG.fromFile("test/input/upscale")).scale("px", [32, 32]);
+		let small = (await PNG.fromFile("test/input/upscale")).scale("px", [64, 36]);
 		const large = await PNG.fromFile("test/input/downscale");
 		compareIms(small, large);
 	}
@@ -20,7 +20,7 @@ Deno.test({
 Deno.test({
 	name: "Scale Up Factor",
 	fn: async () => {
-		let small = (await PNG.fromFile("test/input/upscale")).scale("factor", 16);
+		let small = (await PNG.fromFile("test/input/upscale")).scale("factor", 2);
 		const large = await PNG.fromFile("test/input/downscale");
 		compareIms(small, large);
 	}
@@ -29,7 +29,7 @@ Deno.test({
 Deno.test({
 	name: "Scale Down Px",
 	fn: async () => {
-		let large = (await PNG.fromFile("test/input/downscale")).scale("px", [2, 2]);
+		let large = (await PNG.fromFile("test/input/downscale")).scale("px", [32, 18]);
 		const small = await PNG.fromFile("test/input/upscale");
 		compareIms(small, large);
 	}
@@ -38,7 +38,7 @@ Deno.test({
 Deno.test({
 	name: "Scale Down Factor",
 	fn: async () => {
-		let small = (await PNG.fromFile("test/input/downscale")).scale("factor", 1 / 16);
+		let small = (await PNG.fromFile("test/input/downscale")).scale("factor", 1 / 2);
 		const large = await PNG.fromFile("test/input/upscale");
 		compareIms(small, large);
 	}
