@@ -54,7 +54,7 @@ export class PNGFilter {
 	 * @param factor The multiplier to expose the image to (1 - no effect).
 	 */
 	exposure(factor: number): this {
-		this.src.function(false, (i, a) => clamp(a[i] * factor, [0, 255]));
+		this.src.function(false, (i, a) => clamp(a[i] * factor, 0, 255));
 		return this;
 	}
 	/**
@@ -67,13 +67,13 @@ export class PNGFilter {
 		for (let i = 0; i < this.src.raw.length / 4; i++) {
 			const hsv = byteRgbToHsv(this.src.raw.subarray(i * 4, i * 4 + 4));
 			hsv[0] = (hsv[0] + hueShift * 255) % 255;
-			hsv[1] = clamp(hsv[1] * satFac, [0, 255]);
-			hsv[2] = clamp(hsv[2] * valFac, [0, 255]);
+			hsv[1] = clamp(hsv[1] * satFac, 0, 255);
+			hsv[2] = clamp(hsv[2] * valFac, 0, 255);
 			byteHsvToRgb(hsv);
 		}
 		return this;
 	}
-	private cf = (val: number, fac: number, thresh = 0.5) => clamp(fac * (val - thresh) + thresh, [0, 1]);
+	private cf = (val: number, fac: number, thresh = 0.5) => clamp(fac * (val - thresh) + thresh, 0, 1);
 	/**
 	 * Apply contrasting to image.
 	 * @param factor The contrast multiplier, 1 has no effect on the image.
@@ -195,10 +195,10 @@ export class PNGFilter {
 	 */
 	tint(color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
-			this.src.raw[i] = clamp((this.src.raw[i] * (color[0] ?? 255)) / 255, [0, 255]);
-			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] * (color[1] ?? 255)) / 255, [0, 255]);
-			this.src.raw[i + 2] = clamp((this.src.raw[i + 2] * (color[2] ?? 255)) / 255, [0, 255]);
-			this.src.raw[i + 3] = clamp((this.src.raw[i + 3] * (color[3] ?? 255)) / 255, [0, 255]);
+			this.src.raw[i] = clamp((this.src.raw[i] * (color[0] ?? 255)) / 255, 0, 255);
+			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] * (color[1] ?? 255)) / 255, 0, 255);
+			this.src.raw[i + 2] = clamp((this.src.raw[i + 2] * (color[2] ?? 255)) / 255, 0, 255);
+			this.src.raw[i + 3] = clamp((this.src.raw[i + 3] * (color[3] ?? 255)) / 255, 0, 255);
 		}
 		return this;
 	}
@@ -208,10 +208,10 @@ export class PNGFilter {
 	 */
 	unTint(color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		for (let i = 0; i < this.src.raw.length; i += 4) {
-			this.src.raw[i] = clamp((this.src.raw[i] / (color[0] ?? 255)) * 255, [0, 255]);
-			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] / (color[1] ?? 255)) * 255, [0, 255]);
-			this.src.raw[i + 2] = clamp((this.src.raw[i + 2] / (color[2] ?? 255)) * 255, [0, 255]);
-			this.src.raw[i + 3] = clamp((this.src.raw[i + 3] / (color[3] ?? 255)) * 255, [0, 255]);
+			this.src.raw[i] = clamp((this.src.raw[i] / (color[0] ?? 255)) * 255, 0, 255);
+			this.src.raw[i + 1] = clamp((this.src.raw[i + 1] / (color[1] ?? 255)) * 255, 0, 255);
+			this.src.raw[i + 2] = clamp((this.src.raw[i + 2] / (color[2] ?? 255)) * 255, 0, 255);
+			this.src.raw[i + 3] = clamp((this.src.raw[i + 3] / (color[3] ?? 255)) * 255, 0, 255);
 		}
 		return this;
 	}

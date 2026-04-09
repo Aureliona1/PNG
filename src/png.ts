@@ -122,7 +122,7 @@ export class PNG {
 	 * @returns A view of the raw pixel array at the specified coord.
 	 */
 	getPixel(x: number, y: number): Uint8Array {
-		const index = (clamp(y, [0, this.height]) * this.width + clamp(x, [0, this.width])) * 4;
+		const index = (clamp(y, 0, this.height) * this.width + clamp(x, 0, this.width)) * 4;
 		return this.raw.subarray(index, index + 4);
 	}
 
@@ -133,7 +133,7 @@ export class PNG {
 	 * @param color The [red, green, blue, alpha?] to set the pixel to (0 - 255). This can also stretch over multiple colors to modify multiple pixels.
 	 */
 	setPixel(x: number, y: number, color: ArrayLike<number>): this {
-		const index = (clamp(y, [0, this.height]) * this.width + clamp(x, [0, this.width])) * 4;
+		const index = (clamp(y, 0, this.height) * this.width + clamp(x, 0, this.width)) * 4;
 		for (let i = 0; i < color.length && index + i < this.raw.length; i++) {
 			this.raw[index + i] = color[i];
 		}
@@ -175,10 +175,10 @@ export class PNG {
 	 * @param height The height of the resulting image.
 	 */
 	crop(x = 0, y = 0, width = this.width, height = this.height): this {
-		x = clamp(x, [0, this.width - 1]);
-		y = clamp(y, [0, this.height - 1]);
-		width = clamp(width, [1, this.width - x]);
-		height = clamp(height, [1, this.height - y]);
+		x = clamp(x, 0, this.width - 1);
+		y = clamp(y, 0, this.height - 1);
+		width = clamp(width, 1, this.width - x);
+		height = clamp(height, 1, this.height - y);
 		const newRaw = new Uint8Array(width * height * 4);
 		for (let row = 0; row < height; row++) {
 			for (let col = 0; col < width; col++) {

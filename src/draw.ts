@@ -1,5 +1,5 @@
+import { ArrOp, distance, hsv2rgb, mapRange, midPoint, progressRepeatSync, rotateVector, rotateVector2D, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
-import { ArrOp, distance, hsv2rgb, mapRange, midPoint, progressRepeat, rotateVector, rotateVector2D, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
 import { makeNoise3D } from "./vendor/noise.ts";
 
 /**
@@ -110,13 +110,13 @@ export class PNGDraw {
 		// Draw
 		let currentPoint: Vec2 = [width / 2, height / 2];
 		if (fadeWhite) {
-			progressRepeat(width * height, () => {
+			progressRepeatSync(width * height, () => {
 				currentPoint = midPoint(currentPoint, cornerPoints[Math.floor(Math.random() * corners)], true);
 				const thisColor = ArrOp.lerp(color, [255, 255, 255, 255], new ArrOp(this.src.getPixel(...currentPoint)).sum / 1020);
 				this.src.setPixel(...currentPoint, thisColor);
 			});
 		} else {
-			progressRepeat(width * height, () => {
+			progressRepeatSync(width * height, () => {
 				currentPoint = midPoint(currentPoint, cornerPoints[Math.floor(Math.random() * corners)], true);
 				this.src.setPixel(...currentPoint, color);
 			});

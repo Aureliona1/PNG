@@ -23,7 +23,7 @@ Deno.test({
 		assert(
 			compare(
 				copy.raw,
-				sample.raw.map((x, i) => ((i + 1) % 4 ? clamp(x * 2, [0, 255]) : x))
+				sample.raw.map((x, i) => ((i + 1) % 4 ? clamp(x * 2, 0, 255) : x))
 			)
 		);
 		copy.filter.exposure(0);
@@ -66,7 +66,7 @@ Deno.test({
 			32,
 			32
 		);
-		sample.filter.contrast(100, 128 / 255);
+		sample.filter.contrast(200, 128 / 255);
 		assert(sample.raw.every(x => x === 255 || x === 0 || x === 128));
 		sample.raw = new Uint8Array(32 * 32 * 4).map((_, i) => ((i + 1) % 4 ? random(0, 256, i, 0) : 255));
 		sample.filter.contrast(0, 150 / 255);

@@ -312,6 +312,6 @@ export function gammaCorrect(pixels: Uint8Array, gamma: number) {
 	for (let i = 0; i < length; i++) {
 		let normalized = pixels[i] / 255;
 		let corrected = Math.pow(normalized, invGamma);
-		pixels[i] = clamp(Math.round(corrected * 255), [0, 255]);
+		pixels[i] = clamp(Math.round(corrected * 255), 0, 255);
 	}
 }
