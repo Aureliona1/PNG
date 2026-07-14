@@ -67,7 +67,8 @@ export class PNGFormatterTo {
 	 */
 	toRGB(): Uint8Array {
 		const newRaw = new Uint8Array((this.src.raw.length * 3) / 4);
-		for (let i = 0; i < newRaw.length / 3; i++) {
+		const pixelCount = newRaw.length / 3;
+		for (let i = 0; i < pixelCount; i++) {
 			newRaw[i * 3] = this.src.raw[i * 4];
 			newRaw[i * 3 + 1] = this.src.raw[i * 4 + 1];
 			newRaw[i * 3 + 2] = this.src.raw[i * 4 + 2];
