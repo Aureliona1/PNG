@@ -1,4 +1,4 @@
-import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, type Easing, lerp, type Vec2, type Vec4 } from "@aurellis/helpers";
+import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, distance, type Easing, lerp, type Vec2, type Vec4 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 
 /**
@@ -261,6 +261,34 @@ export class PNGFilter {
 	 */
 	mixColor(color: Vec4 = [255, 255, 255, 255], factor = 0.5): this {
 		this.src.raw = this.src.raw.map((x, i) => Math.round(lerp(x, color[i % 4], factor)));
+		return this;
+	}
+
+	/**
+	 * Apply bloom to pixels above the brightness threshold.
+	 * @param thresh The threshold (0 - 1) that pixels must be brighter than to apply bloom to. (Default - 0.9)
+	 * @param radius The radius of the bloom circle. (Default - 10)
+	 * @param strength The coefficient to multiply bloomed pixels by. (Default - 1)
+	 * @param color The color to tint the bloom with.
+	 */
+	bloom(thresh = 0.9, radius: number, strength: number, color: Vec4 = [255, 255, 255, 255]): this {
+		color = ArrOp.divide(color, 255 / strength);
+		const black = new Uint8Array(4);
+		const apply = (x: number, y: number, scaledColor: Uint8Array) => {
+			for (let row = Math.max(y - radius, 0); row < Math.min(y + radius, this.src.height); row++) {
+				for (let col = Math.max(x - radius, 0); row < Math.min(x + radius, this.src.height); col++) {
+					const thisPX = this.src.getPixel(col, row);
+					this.src.setPixel(col, row, clamp(ArrOp.add(thisPX, ArrOp.lerp(black, scaledColor, 1 - distance([col, row], [x, y]) / radius)), 0, 255));
+				}
+			}
+		};
+		for (let row = 0; row < this.src.height; row++) {
+			for (let col = 0; col < this.src.width; col++) {
+				const thisPX = this.src.getPixel(col, row);
+				const brightness = ArrOp.sum(thisPX.slice(0, 3)) / (255 * 3);
+				if (brightness >= thresh) apply(col, row, ArrOp.multiply(thisPX, color));
+			}
+		}
 		return this;
 	}
 }
