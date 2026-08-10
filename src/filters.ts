@@ -1,5 +1,5 @@
-import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, distance, type Easing, lerp, type Vec2, type Vec4 } from "@aurellis/helpers";
-import type { PNG } from "./png.ts";
+import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, deepCopy, type Easing, lerp, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
+import { PNG } from "./png.ts";
 
 /**
  * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
@@ -266,29 +266,37 @@ export class PNGFilter {
 
 	/**
 	 * Apply bloom to pixels above the brightness threshold.
-	 * @param thresh The threshold (0 - 1) that pixels must be brighter than to apply bloom to. (Default - 0.9)
-	 * @param radius The radius of the bloom circle. (Default - 10)
 	 * @param strength The coefficient to multiply bloomed pixels by. (Default - 1)
+	 * @param radius The radius of the bloom circle. (Default - 10)
+	 * @param thresh The threshold (0 - 1) that pixels must be brighter than to apply bloom to. (Default - 0.9)
 	 * @param color The color to tint the bloom with.
 	 */
-	bloom(thresh = 0.9, radius: number, strength: number, color: Vec4 = [255, 255, 255, 255]): this {
+	bloom(strength = 1, radius = 10, thresh = 0.9, color: Vec3 = [255, 255, 255]): this {
+		thresh = clamp(thresh, 1 / 255, 1);
+		strength = clamp(strength, 0, Infinity) / 64;
+		const newIm = new PNG(deepCopy(this.src.raw), this.src.width, this.src.height);
 		color = ArrOp.divide(color, 255 / strength);
-		const black = new Uint8Array(4);
 		const apply = (x: number, y: number, scaledColor: Uint8Array) => {
 			for (let row = Math.max(y - radius, 0); row < Math.min(y + radius, this.src.height); row++) {
-				for (let col = Math.max(x - radius, 0); row < Math.min(x + radius, this.src.height); col++) {
-					const thisPX = this.src.getPixel(col, row);
-					this.src.setPixel(col, row, clamp(ArrOp.add(thisPX, ArrOp.lerp(black, scaledColor, 1 - distance([col, row], [x, y]) / radius)), 0, 255));
+				for (let col = Math.max(x - radius, 0); col < Math.min(x + radius, this.src.width); col++) {
+					const d2 = Math.pow(col - x, 2) + Math.pow(row - y, 2);
+					const factor = 1 - d2 / (radius * radius);
+					if (factor < 0) continue;
+					const index = (clamp(row, 0, newIm.height) * newIm.width + clamp(col, 0, newIm.width)) * 4;
+					newIm.raw[index] = clamp(newIm.raw[index] + scaledColor[0] * factor, 0, 255);
+					newIm.raw[index + 1] = clamp(newIm.raw[index + 1] + scaledColor[1] * factor, 0, 255);
+					newIm.raw[index + 2] = clamp(newIm.raw[index + 2] + scaledColor[2] * factor, 0, 255);
 				}
 			}
 		};
 		for (let row = 0; row < this.src.height; row++) {
 			for (let col = 0; col < this.src.width; col++) {
-				const thisPX = this.src.getPixel(col, row);
-				const brightness = ArrOp.sum(thisPX.slice(0, 3)) / (255 * 3);
-				if (brightness >= thresh) apply(col, row, ArrOp.multiply(thisPX, color));
+				const index = (clamp(row, 0, this.src.height) * this.src.width + clamp(col, 0, this.src.width)) * 4;
+				const brightness = ArrOp.sum(this.src.raw.subarray(index, index + 3)) / (255 * 3);
+				if (brightness >= thresh) apply(col, row, ArrOp.multiply(this.src.raw.subarray(index, index + 3), color));
 			}
 		}
+		this.src.raw = newIm.raw;
 		return this;
 	}
 }
