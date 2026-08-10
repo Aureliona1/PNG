@@ -1,54 +1,15 @@
-import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, deepCopy, type Easing, lerp, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
-import { PNG } from "./png.ts";
+import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, type Easing, lerp, type Vec3, type Vec4 } from "@aurellis/helpers";
+import type { PNG } from "./png.ts";
 
 /**
  * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
  */
 export class PNGFilter {
 	/**
-	 * Convert an absolute index into a coordinate.
-	 */
-	private i2c(i: number): Vec2 {
-		return [Math.floor(Math.floor(i / 4) / this.src.width), Math.floor(i / 4) % this.src.width];
-	}
-	/**
-	 * Get the neighbours of a pixel at an index.
-	 */
-	private getNeighbours(i: number, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical"): Uint8Array {
-		const coord = this.i2c(i);
-		const n = new Uint8Array(neighbourhood === "Moore" ? 32 : neighbourhood === "Von-Neumann" ? 16 : 8);
-		switch (neighbourhood) {
-			case "Moore":
-				n.set(this.src.getPixel(coord[0] - 1, coord[1] - 1));
-				n.set(this.src.getPixel(coord[0] - 1, coord[1]), 4);
-				n.set(this.src.getPixel(coord[0] - 1, coord[1] + 1), 8);
-				n.set(this.src.getPixel(coord[0], coord[1] - 1), 12);
-				n.set(this.src.getPixel(coord[0], coord[1] + 1), 16);
-				n.set(this.src.getPixel(coord[0] + 1, coord[1] - 1), 20);
-				n.set(this.src.getPixel(coord[0] + 1, coord[1]), 24);
-				n.set(this.src.getPixel(coord[0] + 1, coord[1] + 1), 28);
-				break;
-			case "Von-Neumann":
-				n.set(this.src.getPixel(coord[0] - 1, coord[1]));
-				n.set(this.src.getPixel(coord[0], coord[1] - 1), 4);
-				n.set(this.src.getPixel(coord[0], coord[1] + 1), 8);
-				n.set(this.src.getPixel(coord[0] + 1, coord[1]), 12);
-				break;
-			case "Horizontal":
-				n.set(this.src.getPixel(coord[0], coord[1] - 1));
-				n.set(this.src.getPixel(coord[0], coord[1] + 1), 4);
-				break;
-			case "Vertical":
-				n.set(this.src.getPixel(coord[0] - 1, coord[1]));
-				n.set(this.src.getPixel(coord[0] + 1, coord[1]), 4);
-				break;
-		}
-		return n;
-	}
-	/**
 	 * This is a utility class that can add filters to an image. Never construct this class by itself. Use the `filter` member on PNG.
 	 */
 	constructor(private src: PNG) {}
+
 	/**
 	 * Over or under expose the image.
 	 * @param factor The multiplier to expose the image to (1 - no effect).
@@ -57,6 +18,7 @@ export class PNGFilter {
 		this.src.function(false, (i, a) => clamp(a[i] * factor, 0, 255));
 		return this;
 	}
+
 	/**
 	 * Adjust the image hue saturation and value.
 	 * @param hueShift 0 - no effect (values should be 0-1).
@@ -74,6 +36,7 @@ export class PNGFilter {
 		return this;
 	}
 	private cf = (val: number, fac: number, thresh = 0.5) => clamp(fac * (val - thresh) + thresh, 0, 1);
+
 	/**
 	 * Apply contrasting to image.
 	 * @param factor The contrast multiplier, 1 has no effect on the image.
@@ -83,41 +46,128 @@ export class PNGFilter {
 		this.src.function(false, (i, a) => this.cf(a[i] / 255, factor, thresh) * 255);
 		return this;
 	}
+
 	/**
 	 * Blur the image by averaging neighbouring pixels.
 	 * @param iterations The number of averages to take, the more you blur the image, the longer it takes to run.
 	 * @param alpha Whether to also blur the alpha values. (Default - false).
 	 * @param neighbourhood Determines the neighbourhood to use for blurring. (Default - Von-Neumann)
 	 *
-	 * - Horizontal - blurs based on the average of the pixels above and below. (Fast)
-	 * - Vertical - blurs based on the average of the pixels left and right. (Fast)
+	 * - Horizontal - blurs based on the average of the pixels left and right. (Fast)
+	 * - Vertical - blurs based on the average of the pixels above and below. (Fast)
 	 * - Von-Neumann - Combines horizontal and vertical. (Medium)
 	 * - Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
 	 */
 	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): this {
-		const sumEvery = (arr: Uint8Array, start: number, skip: number) => {
-			let sum = 0;
-			for (let i = start; i < arr.length; i += skip) {
-				sum += arr[i];
-			}
-			return sum;
-		};
-		for (let i = 0; i < iterations; i++) {
-			const out = new Uint8Array(this.src.raw);
-			for (let i = 0; i < out.length; i += 4) {
-				const n = this.getNeighbours(i, neighbourhood);
-				const neighbourCount = n.length / 4;
-				out[i] = sumEvery(n, 0, 4) / neighbourCount;
-				out[i + 1] = sumEvery(n, 1, 4) / neighbourCount;
-				out[i + 2] = sumEvery(n, 2, 4) / neighbourCount;
-				if (alpha) {
-					out[i + 4] = sumEvery(n, 3, 4) / neighbourCount;
+		const stride = this.src.width * 4;
+
+		for (let iteration = 0; iteration < iterations; iteration++) {
+			const src = this.src.raw;
+			const out = new Uint8Array(src);
+
+			for (let y = 0; y < this.src.height; y++) {
+				const rowStart = y * stride;
+
+				for (let x = 0; x < this.src.width; x++) {
+					const i = rowStart + x * 4;
+
+					let r = 0;
+					let g = 0;
+					let b = 0;
+					let a = 0;
+					let count = 0;
+
+					const add = (index: number) => {
+						r += src[index];
+						g += src[index + 1];
+						b += src[index + 2];
+
+						if (alpha) {
+							a += src[index + 3];
+						}
+
+						count++;
+					};
+
+					switch (neighbourhood) {
+						case "Horizontal":
+							if (x > 0) {
+								add(i - 4);
+							}
+
+							if (x < this.src.width - 1) {
+								add(i + 4);
+							}
+
+							break;
+
+						case "Vertical":
+							if (y > 0) {
+								add(i - stride);
+							}
+
+							if (y < this.src.height - 1) {
+								add(i + stride);
+							}
+
+							break;
+
+						case "Von-Neumann":
+							if (x > 0) {
+								add(i - 4);
+							}
+
+							if (x < this.src.width - 1) {
+								add(i + 4);
+							}
+
+							if (y > 0) {
+								add(i - stride);
+							}
+
+							if (y < this.src.height - 1) {
+								add(i + stride);
+							}
+
+							break;
+
+						case "Moore":
+							for (let dy = -1; dy <= 1; dy++) {
+								for (let dx = -1; dx <= 1; dx++) {
+									if (dx === 0 && dy === 0) {
+										continue;
+									}
+
+									const nx = x + dx;
+									const ny = y + dy;
+
+									if (nx >= 0 && nx < this.src.width && ny >= 0 && ny < this.src.height) {
+										add(ny * stride + nx * 4);
+									}
+								}
+							}
+
+							break;
+					}
+
+					if (count > 0) {
+						out[i] = r / count;
+						out[i + 1] = g / count;
+						out[i + 2] = b / count;
+
+						if (alpha) {
+							out[i + 3] = a / count;
+						}
+					}
 				}
 			}
+
 			this.src.raw = out;
 		}
+
 		return this;
 	}
+
 	/**
 	 * Quantise the image by reducing the number of available colors.
 	 * @param colors The number of available colors to use.
@@ -264,6 +314,121 @@ export class PNGFilter {
 		return this;
 	}
 
+	private blurF32(src: Float32Array, iterations: number): Float32Array {
+		const width = this.src.width;
+		const height = this.src.height;
+		const stride = width * 4;
+
+		let current = src;
+
+		for (let iteration = 0; iteration < iterations; iteration++) {
+			const out = new Float32Array(current.length);
+
+			for (let y = 0; y < height; y++) {
+				const rowStart = y * stride;
+
+				for (let x = 0; x < width; x++) {
+					const i = rowStart + x * 4;
+
+					let r = 0;
+					let g = 0;
+					let b = 0;
+					let a = 0;
+					let count = 0;
+
+					// Top-left
+					if (x > 0 && y > 0) {
+						const n = i - stride - 4;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Top
+					if (y > 0) {
+						const n = i - stride;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Top-right
+					if (x < width - 1 && y > 0) {
+						const n = i - stride + 4;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Left
+					if (x > 0) {
+						const n = i - 4;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Right
+					if (x < width - 1) {
+						const n = i + 4;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Bottom-left
+					if (x > 0 && y < height - 1) {
+						const n = i + stride - 4;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Bottom
+					if (y < height - 1) {
+						const n = i + stride;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					// Bottom-right
+					if (x < width - 1 && y < height - 1) {
+						const n = i + stride + 4;
+						r += current[n];
+						g += current[n + 1];
+						b += current[n + 2];
+						a += current[n + 3];
+						count++;
+					}
+
+					out[i] = r / count;
+					out[i + 1] = g / count;
+					out[i + 2] = b / count;
+					out[i + 3] = a / count;
+				}
+			}
+
+			current = out;
+		}
+
+		return current;
+	}
+
 	/**
 	 * Apply bloom to pixels above the brightness threshold.
 	 * @param strength The coefficient to multiply bloomed pixels by. (Default - 1)
@@ -272,31 +437,29 @@ export class PNGFilter {
 	 * @param color The color to tint the bloom with.
 	 */
 	bloom(strength = 1, radius = 10, thresh = 0.9, color: Vec3 = [255, 255, 255]): this {
-		thresh = clamp(thresh, 1 / 255, 1);
-		strength = clamp(strength, 0, Infinity) / 64;
-		const newIm = new PNG(deepCopy(this.src.raw), this.src.width, this.src.height);
-		color = ArrOp.divide(color, 255 / strength);
-		const apply = (x: number, y: number, scaledColor: Uint8Array) => {
-			for (let row = Math.max(y - radius, 0); row < Math.min(y + radius, this.src.height); row++) {
-				for (let col = Math.max(x - radius, 0); col < Math.min(x + radius, this.src.width); col++) {
-					const d2 = Math.pow(col - x, 2) + Math.pow(row - y, 2);
-					const factor = 1 - d2 / (radius * radius);
-					if (factor < 0) continue;
-					const index = (clamp(row, 0, newIm.height) * newIm.width + clamp(col, 0, newIm.width)) * 4;
-					newIm.raw[index] = clamp(newIm.raw[index] + scaledColor[0] * factor, 0, 255);
-					newIm.raw[index + 1] = clamp(newIm.raw[index + 1] + scaledColor[1] * factor, 0, 255);
-					newIm.raw[index + 2] = clamp(newIm.raw[index + 2] + scaledColor[2] * factor, 0, 255);
-				}
-			}
-		};
-		for (let row = 0; row < this.src.height; row++) {
-			for (let col = 0; col < this.src.width; col++) {
-				const index = (clamp(row, 0, this.src.height) * this.src.width + clamp(col, 0, this.src.width)) * 4;
-				const brightness = ArrOp.sum(this.src.raw.subarray(index, index + 3)) / (255 * 3);
-				if (brightness >= thresh) apply(col, row, ArrOp.multiply(this.src.raw.subarray(index, index + 3), color));
+		const tint = [...ArrOp.divide(color, 255), 1];
+		thresh = clamp(thresh, 0, 1);
+		const brightPass = new Float32Array(this.src.raw.length);
+
+		for (let i = 0; i < this.src.raw.length; i += 4) {
+			const brightness = (this.src.raw[i] + this.src.raw[i + 1] + this.src.raw[i + 2]) / (255 * 3);
+
+			const alpha = this.src.raw[i + 3] / 255;
+			const lightContribution = brightness * alpha;
+
+			if (lightContribution > thresh) {
+				const alpha = this.src.raw[i + 3] / 255;
+
+				brightPass[i] = this.src.raw[i] * alpha;
+				brightPass[i + 1] = this.src.raw[i + 1] * alpha;
+				brightPass[i + 2] = this.src.raw[i + 2] * alpha;
+				brightPass[i + 3] = this.src.raw[i + 3];
 			}
 		}
-		this.src.raw = newIm.raw;
+
+		const blurred = this.blurF32(brightPass, radius);
+		let ti = 0;
+		this.src.function(true, (i, a) => clamp(a[i] + blurred[i] * strength * tint[ti++ & 3], 0, 255));
 		return this;
 	}
 }
