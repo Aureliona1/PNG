@@ -58,7 +58,7 @@ export class PNGFilter {
 	 * - Von-Neumann - Combines horizontal and vertical. (Medium)
 	 * - Moore - Also averages the diagonals on top of the Von-Neumann neighbourhood. (Slow)
 	 */
-	blur(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): this {
+	blurNeighbours(iterations: number, alpha = false, neighbourhood: "Moore" | "Von-Neumann" | "Horizontal" | "Vertical" = "Von-Neumann"): this {
 		const stride = this.src.width * 4;
 
 		for (let iteration = 0; iteration < iterations; iteration++) {
