@@ -10,18 +10,20 @@ export class PNGDraw {
 	 * This is a utility class that can add shapes, lines, and patterns to an image. It should never be constructed by itself. Always use the `draw` member on a PNG.
 	 */
 	constructor(public src: PNG) {}
+
 	/**
 	 * Fill the image with a specific color.
 	 * @param width The resulting width of the image.
 	 * @param height The resulting height of the image.
 	 * @param color The color [R,G,B] or [R,G,B,A] (0-255).
 	 */
-	generateBlank(width = this.src.width, height = this.src.height, color: ArrayLike<number> = [255, 255, 255, 255]): this {
+	blank(width = this.src.width, height = this.src.height, color: ArrayLike<number> = [255, 255, 255, 255]): this {
 		this.src.raw = new Uint8Array(width * height * 4).map((_v, i) => color[i % 4]);
 		this.src.width = width;
 		this.src.height = height;
 		return this;
 	}
+
 	/**
 	 * Draws a vector on the PNG.
 	 * @param start The start coord [col from left, row from top].
@@ -59,6 +61,7 @@ export class PNGDraw {
 		}
 		return this;
 	}
+
 	/**
 	 * Draw random noise across the image.
 	 * @param width The resulting width of the image.
@@ -68,8 +71,8 @@ export class PNGDraw {
 	 * @param seed The seed for the noise generator.
 	 * @param byColor Set this to true to run the noise over the image by each color instead of all color channels consecutively. (Default - false)
 	 */
-	noisify(width = this.src.width, height = this.src.height, z = 0, scale = 1, seed: number = Math.random(), byColor = false): this {
-		this.generateBlank(width, height);
+	noise(width = this.src.width, height = this.src.height, z = 0, scale = 1, seed: number = Math.random(), byColor = false): this {
+		this.blank(width, height);
 		if (byColor) {
 			let noise = makeNoise3D(seed * 3276.123);
 			for (let i = 0; i < this.src.raw.length; i += 4) {
@@ -100,7 +103,7 @@ export class PNGDraw {
 	 */
 	fractalPolygon(corners = 3, color: Vec4 = [255, 0, 0, 255], width = this.src.width, height = this.src.height, fadeWhite = false): this {
 		// Create black bg
-		this.generateBlank(width, height, [0, 0, 0, 255]);
+		this.blank(width, height, [0, 0, 0, 255]);
 
 		// Init shape corners
 		const cornerPoints = Array(corners)
@@ -123,6 +126,7 @@ export class PNGDraw {
 		}
 		return this;
 	}
+
 	/**
 	 * Generate a fractal binary tree shape.
 	 * @param layers The number of tree layers.
@@ -135,7 +139,7 @@ export class PNGDraw {
 	 * @param outerColor The color of the final layer of the tree.
 	 */
 	fractalTree(layers = 10, angleOffset = 20, lengthFactor = 0.9, width = this.src.width, height = this.src.height, initialLength = this.src.height * 0.13, baseColor: Vec4 = [255, 0, 0, 255], outerColor: Vec4 = [255, 255, 255, 255]): PNG {
-		this.generateBlank(width, height, [0, 0, 0, 255]);
+		this.blank(width, height, [0, 0, 0, 255]);
 		let ends: Vec3[] = [[this.src.height - 1, Math.floor(this.src.width / 2), 0]];
 		for (let i = 0; i < layers; i++) {
 			const newEnds: Vec3[] = [];
@@ -149,14 +153,15 @@ export class PNGDraw {
 		}
 		return this.src;
 	}
+
 	/**
-	 * Creates a voronoi diagram (color by distance).
+	 * Creates a Voronoi diagram (color by distance).
 	 * @param dims The dimensions of the diagram.
 	 * @param pointCount The number of points in the diagram.
 	 */
 	voronoiDiagram(pointCount = 10, width = this.src.width, height = this.src.height): this {
 		const maxDist = distance([width, height], [0, 0]);
-		this.generateBlank(width, height);
+		this.blank(width, height);
 		const points = Array(pointCount)
 			.fill(0)
 			.map(() => [Math.random() * width, Math.random() * height, hsv2rgb([Math.random(), 1, 1, 1]).map(x => Math.floor(x * 255))].map((x, i) => (i > 1 ? Math.floor(x as number) : x))) as [number, number, Vec4][];

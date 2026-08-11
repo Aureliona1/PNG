@@ -201,6 +201,7 @@ export class PNGFilter {
 		}
 		return this;
 	}
+
 	/**
 	 * Return the difference between pixels at a determined width.
 	 * @param width The width to check difference over (Default - 1).
@@ -219,6 +220,7 @@ export class PNGFilter {
 		});
 		return this;
 	}
+
 	/**
 	 * Apply a bleed effect, this effect randomly "drags" pixels down the image.
 	 * @param amount The amount of bleed to apply (0-1).
@@ -239,6 +241,7 @@ export class PNGFilter {
 		}
 		return this;
 	}
+
 	/**
 	 * Apply tint effect to image by over/under exposing color channels.
 	 * @param color The color to tint the image. [R,G,B] or [R,G,B,A] (0-255).
@@ -252,6 +255,7 @@ export class PNGFilter {
 		}
 		return this;
 	}
+
 	/**
 	 * Remove potential tints on the image by reversing tint function. This will not work if the original tint color contains a 0.
 	 * @param color The color to attempt to untint from. [R,G,B] or [R,G,B,A] (0-255).
@@ -265,8 +269,9 @@ export class PNGFilter {
 		}
 		return this;
 	}
+
 	/**
-	 * Add chromatic abberation to your image, all offsets are in pixels radially from the center. Larger images will typically need higher values to see a similar effect.
+	 * Add chromatic aberration to your image, all offsets are in pixels radially from the center. Larger images will typically need higher values to see a similar effect.
 	 * @param r The red offset (integer value in pixels), (Default - 1).
 	 * @param g The green offset (integer value in pixels), (Default - 2).
 	 * @param b The blue offset (integer value in pixels), (Default - 3).
@@ -292,6 +297,7 @@ export class PNGFilter {
 		}
 		return this;
 	}
+
 	/**
 	 * Mix the current image with another one.
 	 * @param img The image to overlay.
@@ -304,6 +310,7 @@ export class PNGFilter {
 		}
 		return this;
 	}
+
 	/**
 	 * Overlay a color on the image.
 	 * @param color The color to overlay (gamma rgb 0 - 255).

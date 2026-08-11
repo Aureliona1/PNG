@@ -111,7 +111,7 @@ export class PNG {
 		if (this.raw.length < this.width * this.height * 4) {
 			const color = new Uint8Array(4).fill(255);
 			color.set(this.raw.slice(0, 4));
-			this.draw.generateBlank(this.width, this.height, color);
+			this.draw.blank(this.width, this.height, color);
 		}
 	}
 
