@@ -1,4 +1,4 @@
-import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, type Easing, lerp, type Vec3, type Vec4 } from "@aurellis/helpers";
+import { ArrOp, byteHsvToRgb, byteRgbToHsv, clamp, compare, deepCopy, distance2, type Easing, lerp, type Vec3, type Vec4 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
 
 /**
@@ -204,20 +204,35 @@ export class PNGFilter {
 
 	/**
 	 * Return the difference between pixels at a determined width.
-	 * @param width The width to check difference over (Default - 1).
-	 * @param contrast The contrast factor to add over the image (Default - 5).
-	 * @param contrastThresh The threshold to apply contrast to (Default - 0.05).
+	 * @param radius The radius to check difference over (Default - 1).
+	 * @param contrast The contrast factor to add over the image (Default - 10).
+	 * @param contrastThresh The threshold to apply contrast to (Default - 0.02).
 	 */
-	edgeDetect(width = 1, contrast = 5, contrastThresh = 0.05): this {
-		this.src.function(false, (i, arr) => {
-			const val = Math.min(
-				Math.abs(i < this.src.width * 4 * width ? 255 : arr[i] - arr[i - this.src.width * 4 * width]), // Up
-				Math.abs(i > this.src.width * (this.src.height - width) * 4 ? 255 : arr[i] - arr[i + this.src.width * 4 * width]), // Down
-				Math.abs(i % (this.src.width * 4) < 4 * width ? 255 : arr[i] - arr[i - 4 * width]), // Left
-				Math.abs(i % (this.src.width * 4) > this.src.width * 4 - 4 * width ? 255 : arr[i] - arr[i + 4 * width]) // Right
-			);
-			return this.cf(val / 255, contrast, contrastThresh) * 255;
-		});
+	edgeDetect(radius = 1, contrast = 5, contrastThresh = 0.02): this {
+		this.src.filter.hsv(0, 0, 1);
+		const newRaw = deepCopy(this.src.raw);
+		for (let row = 0; row < this.src.height; row++) {
+			for (let col = 0; col < this.src.width; col++) {
+				const p = this.src.getPixel(col, row)[0];
+				let totalDiff = 0;
+				let diffCount = 0;
+				for (let y = Math.max(0, row - radius); y < Math.min(this.src.height, row + radius); y++) {
+					for (let x = Math.max(0, col - radius); x < Math.min(this.src.width, col + radius); x++) {
+						const d2 = distance2([col, row], [x, y]);
+						if (d2 >= radius * radius) continue;
+						if (compare([x, y], [col, row])) continue;
+						totalDiff += Math.abs(p - this.src.getPixel(x, y)[0]);
+						diffCount++;
+					}
+				}
+				const avg = this.cf(totalDiff / (diffCount * 255), contrast, contrastThresh) * 255;
+				const index = (row * this.src.width + col) * 4;
+				newRaw[index] = avg;
+				newRaw[index + 1] = avg;
+				newRaw[index + 2] = avg;
+			}
+		}
+		this.src.raw = newRaw;
 		return this;
 	}
 
