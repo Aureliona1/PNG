@@ -35,7 +35,7 @@
   },
   "minimumDependencyAge": 0,
   "name": "@aurellis/png",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "license": "MIT",
   "exports": "./mod.ts"
 }
