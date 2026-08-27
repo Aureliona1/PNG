@@ -110,18 +110,14 @@ export class PNGFormatterTo {
 	 */
 	toIndexed(): [Uint8Array, Uint8Array] {
 		if (!this._indexedPalette.size) {
-			if (!this.canBeIndexed()) {
-				return [new Uint8Array(), new Uint8Array()];
-			}
+			if (!this.canBeIndexed()) return [new Uint8Array(), new Uint8Array()];
 		}
 		const palette = new Uint8Array(this._indexedPalette.size * 3);
 		this._indexedPalette.forEach((i, col) => {
 			palette.set(PNGFormatterTo.n2c(col), i * 3);
 		});
 		const newRaw = new Uint8Array(this.src.raw.length / 4);
-		for (let i = 0; i < newRaw.length; i++) {
-			newRaw[i] = this._indexedPalette.get(PNGFormatterTo.c2n(this.src.raw.subarray(i * 4, i * 4 + 3))) ?? 0;
-		}
+		for (let i = 0; i < newRaw.length; i++) newRaw[i] = this._indexedPalette.get(PNGFormatterTo.c2n(this.src.raw.subarray(i * 4, i * 4 + 3))) ?? 0;
 		return [palette, newRaw];
 	}
 
@@ -209,9 +205,7 @@ export class PNGFormatterFrom {
 	 */
 	fromRGB(): Uint8Array {
 		const newRaw = new Uint8Array((this.src.raw.length * 4) / 3);
-		for (let i = 0, oldI = 0; i < newRaw.length; i++) {
-			newRaw[i] = (i + 1) % 4 ? this.src.raw[oldI++] : 255;
-		}
+		for (let i = 0, oldI = 0; i < newRaw.length; i++) newRaw[i] = (i + 1) % 4 ? this.src.raw[oldI++] : 255;
 		return newRaw;
 	}
 
@@ -294,9 +288,7 @@ export function unpackBits(bits: Uint8Array, rowWidth: number, currentBitDepth: 
 			const bitOffset = (valuesPerByte - 1 - (col % valuesPerByte)) * currentBitDepth;
 			let value = (bits[byteIndex] >> bitOffset) & mask;
 
-			if (normalise) {
-				value = mapRange(value, [0, mask], [0, 255]);
-			}
+			if (normalise) value = mapRange(value, [0, mask], [0, 255]);
 			output[row * rowWidth + col] = value;
 		}
 	}

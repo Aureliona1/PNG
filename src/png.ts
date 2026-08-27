@@ -46,18 +46,14 @@ export class PNG {
 		dec.raw = unpackBits(dec.raw, dec.width, dec.bitDepth, dec.colorFormat !== "Indexed");
 		const formatter = new PNGFormatterFrom(dec);
 		if (formatter.isCorrectFormat()) {
-			if (dec.colorFormat !== "RGBA") {
-				dec.raw = formatter[`from${dec.colorFormat}`]();
-			}
+			if (dec.colorFormat !== "RGBA") dec.raw = formatter[`from${dec.colorFormat}`]();
 		} else {
 			clog(`Image ${imageName} does not contain a supported format, image will be blank...`, "Error", "PNG");
 			return new PNG();
 		}
 
 		// Gamma correction
-		if (dec.gamma && dec.gamma !== 0) {
-			gammaCorrect(dec.raw, dec.gamma);
-		}
+		if (dec.gamma && dec.gamma !== 0) gammaCorrect(dec.raw, dec.gamma);
 
 		return new PNG(dec.raw, dec.width, dec.height);
 	}
@@ -96,6 +92,7 @@ export class PNG {
 	 * The height (in pixels) of the image.
 	 */
 	height = 100;
+
 	/**
 	 * A class that handles many operations regarding PNG files.
 	 * @param raw The raw pixel values of the PNG, this may be left blank to create a white image.
@@ -210,7 +207,7 @@ export class PNG {
 	}
 
 	/**
-	 * Determine the minimum valid bitdepth for indexed color.
+	 * Determine the minimum valid bit-depth for indexed color.
 	 * This is based off the length of the palette.
 	 */
 	private paletteBitDepth(len: number): BitDepth {
@@ -231,17 +228,19 @@ export class PNG {
 	 * Write the PNG to a png file.
 	 * @param path The relative path of the image, ".png" is optional.
 	 * @param colorFormat Optional color format. If this is left blank, the image will automatically be reduced to the most optimal color format for filesize.
-	 * @param grayScaleBitDepth The bitdepth of the image if it able to be represented as grayscale, this does nothing if the resulting image is not grayscale.
+	 * @param grayScaleBitDepth The bit-depth of the image if it able to be represented as grayscale, this does nothing if the resulting image is not grayscale.
 	 */
 	async writeFile(path: string = "im", colorFormat?: ColorFormat, grayScaleBitDepth: BitDepth = 8): Promise<this> {
 		path = /.*\.png$/.test(path) ? path : path + ".png";
 		const formatter = new PNGFormatterTo(this);
+
 		// Quick validation
 		if (!formatter.canBeRGBA()) throw new Error(`Image dimensions do not match pixel array length, expected ${this.width * this.height * 4}, got ${this.raw.length}...`);
 
 		// If the user has a specified format.
-		if (colorFormat) {
-			colorFormat = formatter[`canBe${colorFormat}`]() ? colorFormat : undefined;
+		if (colorFormat && !formatter[`canBe${colorFormat}`]()) {
+			clog(`Image cannot be formatted as ${colorFormat}, format will be automatically optimised...`, "Warning");
+			colorFormat = undefined;
 		}
 
 		// Auto optimise format fallback
@@ -264,16 +263,12 @@ export class PNG {
 				} else {
 					colorFormat = "GrayScale";
 				}
-			} else if (formatter.canBeGrayScaleAlpha() && !plte.length) {
-				colorFormat = "GrayScaleAlpha";
-			} else if (formatter.canBeRGB() && !plte.length) {
-				colorFormat = "RGB";
-			} else if (!plte.length) {
-				colorFormat = "RGBA";
-			}
+			} else if (formatter.canBeGrayScaleAlpha() && !plte.length) colorFormat = "GrayScaleAlpha";
+			else if (formatter.canBeRGB() && !plte.length) colorFormat = "RGB";
+			else if (!plte.length) colorFormat = "RGBA";
 		}
 
-		// Actually do formatting and bitdepth assignment.
+		// Actually do formatting and bit-depth assignment.
 		let bitDepth: BitDepth = 8;
 		if (colorFormat === "Indexed" && plte.length) {
 			bitDepth = this.paletteBitDepth(plte.length);
