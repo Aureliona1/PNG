@@ -1,4 +1,4 @@
-import { TwoWayMap } from "@aurellis/helpers";
+import { TwoWayMap, type Vec4 } from "@aurellis/helpers";
 
 /**
  * The available options for bit depths on PNGs. Not all color formats support the full range of bit depths.
@@ -107,4 +107,10 @@ export type TicDictEntry = {
 	bitDepth: BitDepth;
 	nameLength: number;
 	name: string;
+};
+
+export type VoronoiPoint = {
+	x: number;
+	y: number;
+	c: Vec4;
 };

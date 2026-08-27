@@ -1,5 +1,6 @@
-import { ArrOp, distance, hsv2rgb, mapRange, midPoint, progressRepeatSync, rotateVector, rotateVector2D, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
+import { ArrOp, distance2, mapRange, midPoint, progressRepeatSync, rotateVector, rotateVector2D, type Vec2, type Vec3, type Vec4 } from "@aurellis/helpers";
 import type { PNG } from "./png.ts";
+import type { VoronoiPoint } from "./types.ts";
 import { makeNoise3D } from "./vendor/noise.ts";
 
 /**
@@ -154,33 +155,34 @@ export class PNGDraw {
 		return this.src;
 	}
 
-	/**
-	 * Creates a Voronoi diagram (color by distance).
-	 * @param dims The dimensions of the diagram.
-	 * @param pointCount The number of points in the diagram.
-	 */
-	voronoiDiagram(pointCount = 10, width = this.src.width, height = this.src.height): this {
-		const maxDist = distance([width, height], [0, 0]);
+	voronoiDiagram(points: VoronoiPoint[], width = this.src.width, height = this.src.height): this {
+		const maxDist = distance2([width, height], [0, 0]);
 		this.blank(width, height);
-		const points = Array(pointCount)
-			.fill(0)
-			.map(() => [Math.random() * width, Math.random() * height, hsv2rgb([Math.random(), 1, 1, 1]).map(x => Math.floor(x * 255))].map((x, i) => (i > 1 ? Math.floor(x as number) : x))) as [number, number, Vec4][];
-		for (let row = 0; row < width; row++) {
-			for (let col = 0; col < height; col++) {
-				let shortestDist = distance([row, col], points[0].slice(0, 2) as Vec2);
-				let closestPointIndex = 0;
-				for (let i = 1; i < points.length; i++) {
-					const thisDist = distance([row, col], points[i].slice(0, 2) as Vec2);
-					if (thisDist < shortestDist) {
-						shortestDist = thisDist;
-						closestPointIndex = i;
-					}
+		const closestPoint: (x: number, y: number) => { d: number; c: Vec4 } = (x: number, y: number) => {
+			const pointCount = points.length;
+			if (!pointCount) return { d: Infinity, c: [0, 0, 0, 0] as Vec4 };
+			let d = Infinity;
+			let si = 0;
+			for (let i = 0; i < pointCount; i++) {
+				const td = distance2([x, y], [points[i].x, points[i].y]);
+				if (td < d) {
+					d = td;
+					si = i;
 				}
-				this.src.setPixel(
-					row,
-					col,
-					points[closestPointIndex][2].map(x => x * mapRange(shortestDist, [0, maxDist], [1, 0], 0, "easeOutExpo"))
-				);
+			}
+			return { d, c: points[si].c };
+		};
+
+		const scale = (d: number, c: number) => Math.floor(c * mapRange(d, [0, maxDist], [1, 0], 5, "easeOutCirc"));
+
+		for (let y = 0; y < height; y++) {
+			for (let x = 0; x < width; x++) {
+				const { d, c } = closestPoint(x, y);
+				const index = (y * width + x) * 4;
+				this.src.raw[index] = scale(d, c[0]);
+				this.src.raw[index + 1] = scale(d, c[1]);
+				this.src.raw[index + 2] = scale(d, c[2]);
+				// this.src.raw[index + 3] = scale(d, c[3]);
 			}
 		}
 		return this;
