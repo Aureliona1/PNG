@@ -210,12 +210,11 @@ export class PNGFilter {
 	 */
 	edgeDetect(radius = 1, contrast = 5, contrastThresh = 0.01): this {
 		radius = Math.max(1, Math.round(radius));
-		this.src.filter.hsv(0, 0, 1);
 		const newRaw = deepCopy(this.src.raw);
 		for (let row = 0; row < this.src.height; row++) {
 			for (let col = 0; col < this.src.width; col++) {
 				const index = (row * this.src.width + col) * 4;
-				const p = this.src.raw[index];
+				const p = this.src.raw[index] + this.src.raw[index + 1] + this.src.raw[index + 2];
 				let totalDiff = 0;
 				let diffCount = 0;
 				for (let y = Math.max(0, row - radius); y < Math.min(this.src.height, row + radius); y++) {
@@ -225,11 +224,12 @@ export class PNGFilter {
 						const d2 = dx * dx + dy * dy;
 						if (d2 > radius * radius) continue;
 						if (x === col && y === row) continue;
-						totalDiff += Math.abs(p - this.src.raw[(y * this.src.width + x) * 4]);
+						const dIndex = (y * this.src.width + x) * 4;
+						totalDiff += Math.abs(p - this.src.raw[dIndex] - this.src.raw[dIndex + 1] - this.src.raw[dIndex + 2]);
 						diffCount++;
 					}
 				}
-				const avg = this.cf(totalDiff / (diffCount * 255), contrast, contrastThresh) * 255;
+				const avg = this.cf(totalDiff / (diffCount * 255 * 3), contrast, contrastThresh) * 255;
 				newRaw[index] = avg;
 				newRaw[index + 1] = avg;
 				newRaw[index + 2] = avg;
